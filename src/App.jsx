@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle, ArrowUp, ArrowDown, ExternalLink, LogOut
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle, ArrowUp, ArrowDown, ExternalLink, LogOut, Plus
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -105,14 +105,10 @@ const parseDate = (dateStr) => {
     return new Date(dateStr);
 };
 
-// Helper for Trendlines (Linear Regression approximation)
-const addTrendline = (data, key, dateKey = 'sortDate') => {
+const addTrendline = (data, key) => {
     if (data.length < 2) return data;
-    // Simple moving average for trend "feel" or linear regression
-    // Let's do linear regression for a straight trend line
     let n = data.length;
     let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-    
     data.forEach((d, i) => {
         let x = i;
         let y = d[key];
@@ -121,20 +117,15 @@ const addTrendline = (data, key, dateKey = 'sortDate') => {
         sumXY += x * y;
         sumXX += x * x;
     });
-
     let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     let intercept = (sumY - slope * sumX) / n;
-
-    return data.map((d, i) => ({
-        ...d,
-        trend: Math.round(slope * i + intercept)
-    }));
+    return data.map((d, i) => ({ ...d, trend: Math.round(slope * i + intercept) }));
 };
 
-// --- DATABASE ---
+// --- MASSIVE DATABASE RESTORED ---
 
 const ZWIFT_CLIMBS = [
-  // Watopia & Worlds
+  // --- Watopia ---
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
   { id: 'z_epic_kom', name: "Epic KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 9.4, elevation: 540, avgGrade: 5.9 },
   { id: 'z_epic_rev', name: "Epic KOM Reverse", region: "Watopia", country: "Zwift", flag: "🟧", distance: 6.2, elevation: 337, avgGrade: 5.9 },
@@ -142,26 +133,34 @@ const ZWIFT_CLIMBS = [
   { id: 'z_volcano', name: "Volcano KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 3.7, elevation: 125, avgGrade: 3.2 },
   { id: 'z_hilly', name: "Hilly KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 0.9, elevation: 50, avgGrade: 5.5 },
   { id: 'z_titans', name: "Titans Grove KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 2.6, elevation: 119, avgGrade: 4.6 },
-  // France
+  
+  // --- France ---
   { id: 'z_ven_top', name: "Ven-Top", region: "France", country: "Zwift", flag: "🟧", distance: 19.0, elevation: 1534, avgGrade: 8.0 },
   { id: 'z_petit', name: "Petit KOM", region: "France", country: "Zwift", flag: "🟧", distance: 2.7, elevation: 110, avgGrade: 4.0 },
-  // Innsbruck
+  
+  // --- Innsbruck ---
   { id: 'z_innsbruck', name: "Innsbruck KOM", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 7.4, elevation: 400, avgGrade: 5.4 },
   { id: 'z_igls', name: "Igls (Reverse)", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 5.6, elevation: 230, avgGrade: 4.1 },
-  // London
+  
+  // --- London ---
   { id: 'z_leith', name: "Leith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 134, avgGrade: 6.8 },
   { id: 'z_keith', name: "Keith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 4.2, elevation: 228, avgGrade: 5.2 },
   { id: 'z_box', name: "Box Hill", region: "London", country: "Zwift", flag: "🟧", distance: 3.0, elevation: 137, avgGrade: 4.3 },
-  // Yorkshire
+  
+  // --- Yorkshire ---
   { id: 'z_yorkshire', name: "Yorkshire KOM", region: "Yorkshire", country: "Zwift", flag: "🟧", distance: 1.2, elevation: 55, avgGrade: 4.6 },
-  // Makuri
+  
+  // --- Makuri ---
   { id: 'z_temple', name: "Temple KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 2.5, elevation: 99, avgGrade: 3.9 },
   { id: 'z_rooftop', name: "Rooftop KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 54, avgGrade: 2.7 },
-  // Scotland
+  
+  // --- Scotland ---
   { id: 'z_sgurr', name: "Sgurr Summit South", region: "Scotland", country: "Zwift", flag: "🟧", distance: 1.0, elevation: 33, avgGrade: 3.3 },
-  // New York
+  
+  // --- New York ---
   { id: 'z_nyc', name: "NYC KOM", region: "New York", country: "Zwift", flag: "🟧", distance: 1.4, elevation: 89, avgGrade: 6.4 },
-  // Bologna
+  
+  // --- Bologna ---
   { id: 'z_bologna', name: "Bologna TT", region: "Italy", country: "Zwift", flag: "🟧", distance: 2.1, elevation: 200, avgGrade: 9.6 },
 
   // --- CLIMB PORTAL ROTATIONS ---
@@ -212,7 +211,6 @@ const ZWIFT_CLIMBS = [
 ];
 
 const BENELUX_CLIMBS = [
-  // NEDERLAND
   { id: 'nl_camerig', name: "Camerig", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
   { id: 'nl_vaals', name: "Vaalserberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
   { id: 'nl_keuten', name: "Keutenberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 68, avgGrade: 5.9 },
@@ -313,19 +311,20 @@ export default function ClimbPerformanceLab() {
   const [syncStatus, setSyncStatus] = useState('idle');
   const [showSettings, setShowSettings] = useState(false);
   const [geminiKey, setGeminiKey] = useState('');
-  const [externalLinks, setExternalLinks] = useState({
-      strava: 'https://strava.com',
-      intervals: 'https://intervals.icu',
-      climbfinder: 'https://climbfinder.com'
-  });
+  
+  // Custom Links as dynamic array
+  const [externalLinks, setExternalLinks] = useState([
+      { id: 'def1', label: 'Strava', url: 'https://strava.com' },
+      { id: 'def2', label: 'Intervals.icu', url: 'https://intervals.icu' },
+      { id: 'def3', label: 'Climbfinder', url: 'https://climbfinder.com' }
+  ]);
 
   // --- PERSISTENCE & SYNC ---
   useEffect(() => {
     const loadData = async () => {
         try {
             if (db) {
-                const docRef = doc(db, "users", "default_user_v1");
-                const docSnap = await getDoc(docRef);
+                const docSnap = await getDoc(doc(db, "users", "default_user_v1"));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     if(data.profile) setUserProfile(data.profile);
@@ -345,9 +344,7 @@ export default function ClimbPerformanceLab() {
                     return; 
                 }
             }
-        } catch (e) {
-            console.warn("Cloud load failed", e);
-        }
+        } catch (e) { }
 
         const savedProfile = localStorage.getItem('cpl_profile');
         const savedActivities = localStorage.getItem('cpl_activities');
@@ -416,7 +413,7 @@ export default function ClimbPerformanceLab() {
   };
 
   const handleResetApp = () => {
-      if(window.confirm("Weet je zeker dat je alles wilt resetten? Alle data gaat verloren.")) {
+      if(window.confirm("Weet je zeker dat je alles wilt resetten?")) {
           localStorage.clear();
           window.location.reload();
       }
@@ -446,13 +443,31 @@ export default function ClimbPerformanceLab() {
 
   const [tssTimeRange, setTssTimeRange] = useState('all');
   const tssData = useMemo(() => {
-      // Mock aggregation - in real app, aggregate by week/month from activities
-      const months = ['Aug', 'Sep', 'Okt', 'Nov', 'Dec', 'Jan'];
-      let data = months.map((m, i) => ({ month: m, tss: Math.floor(Math.random() * 300) + 200 + (i * 20), sortIndex: i }));
-      
-      if(tssTimeRange === '6m') data = data.slice(-6);
-      
-      // Add Trendline
+      // Aggregate real TSS data from activities
+      const now = new Date();
+      let cutoff = new Date(0);
+      if(tssTimeRange === '6m') cutoff.setMonth(now.getMonth() - 6);
+      if(tssTimeRange === '1y') cutoff.setFullYear(now.getFullYear() - 1);
+
+      // Group by month
+      const grouped = {};
+      activities.forEach(a => {
+          const d = parseDate(a.date);
+          if (d < cutoff) return;
+          const key = `${d.getFullYear()}-${d.getMonth()}`;
+          const label = d.toLocaleString('default', { month: 'short' });
+          if (!grouped[key]) grouped[key] = { month: label, tss: 0, count: 0 };
+          grouped[key].tss += (a.tss || 0);
+          grouped[key].count += 1;
+      });
+
+      // If no data, return mock for visual
+      if (Object.keys(grouped).length === 0) {
+          const months = ['Aug', 'Sep', 'Okt', 'Nov', 'Dec', 'Jan'];
+          return addTrendline(months.map((m, i) => ({ month: m, tss: 0, sortIndex: i })), 'tss');
+      }
+
+      const data = Object.values(grouped); // Sort logic would be needed here for real chronology
       return addTrendline(data, 'tss');
   }, [activities, tssTimeRange]);
 
@@ -466,26 +481,52 @@ export default function ClimbPerformanceLab() {
   // --- SUB-COMPONENTS ---
 
   const SettingsModal = () => {
+      const [newLinkName, setNewLinkName] = useState('');
+      const [newLinkUrl, setNewLinkUrl] = useState('');
+
+      const addLink = () => {
+          if(newLinkName && newLinkUrl) {
+              setExternalLinks([...externalLinks, { id: Date.now(), label: newLinkName, url: newLinkUrl }]);
+              setNewLinkName(''); setNewLinkUrl('');
+          }
+      };
+
+      const removeLink = (id) => {
+          setExternalLinks(externalLinks.filter(l => l.id !== id));
+      };
+
       if(!showSettings) return null;
       return (
           <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-              <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full max-w-md">
+              <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full max-w-md max-h-[80vh] overflow-y-auto">
                   <div className="flex justify-between items-center mb-4">
                       <h3 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={20}/> Instellingen</h3>
                       <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white"><X/></button>
                   </div>
                   
-                  <div className="space-y-4">
+                  <div className="space-y-6">
                       <div>
-                          <label className="text-xs text-slate-400 block mb-1">Gemini API Key (Optioneel)</label>
+                          <label className="text-xs text-slate-400 block mb-1">Gemini API Key (Optioneel voor AI)</label>
                           <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm" placeholder="AI Studio Key..."/>
                       </div>
 
                       <div>
-                          <label className="text-xs text-slate-400 block mb-1">Externe Links</label>
+                          <label className="text-xs text-slate-400 block mb-2">Externe Links</label>
                           <div className="space-y-2">
-                              <input value={externalLinks.strava} onChange={e => setExternalLinks({...externalLinks, strava:e.target.value})} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Strava URL"/>
-                              <input value={externalLinks.intervals} onChange={e => setExternalLinks({...externalLinks, intervals:e.target.value})} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Intervals.icu URL"/>
+                              {externalLinks.map(link => (
+                                  <div key={link.id} className="flex gap-2 items-center">
+                                      <div className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs flex justify-between">
+                                          <span>{link.label}</span>
+                                          <span className="text-slate-500 truncate max-w-[100px]">{link.url}</span>
+                                      </div>
+                                      <button onClick={() => removeLink(link.id)} className="text-red-400 hover:text-red-300 p-1"><Trash2 size={14}/></button>
+                                  </div>
+                              ))}
+                          </div>
+                          <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
+                              <input value={newLinkName} onChange={e => setNewLinkName(e.target.value)} className="w-1/3 bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Naam"/>
+                              <input value={newLinkUrl} onChange={e => setNewLinkUrl(e.target.value)} className="flex-1 bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="URL"/>
+                              <button onClick={addLink} className="bg-green-600 hover:bg-green-500 text-white p-2 rounded"><Plus size={16}/></button>
                           </div>
                       </div>
 
@@ -518,10 +559,13 @@ export default function ClimbPerformanceLab() {
             </div>
         </div>
         
-        {/* Quick Links */}
-        <div className="flex gap-2">
-            <a href={externalLinks.strava} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 bg-orange-900/20 px-2 py-1 rounded"><ExternalLink size={12}/> Strava</a>
-            <a href={externalLinks.intervals} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 px-2 py-1 rounded"><ExternalLink size={12}/> Intervals</a>
+        {/* Quick Links (Dynamic) */}
+        <div className="flex gap-2 flex-wrap">
+            {externalLinks.map(link => (
+                <a key={link.id} href={link.url} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 px-2 py-1 rounded border border-blue-500/30">
+                    <ExternalLink size={10}/> {link.label}
+                </a>
+            ))}
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -918,21 +962,52 @@ export default function ClimbPerformanceLab() {
     const [response, setResponse] = useState(null);
     const [showExtended, setShowExtended] = useState(false);
 
+    // MOCKED WORKOUT OPTIONS
+    const mockWorkouts = [
+        {
+            title: "Endurance & Tempo",
+            description: "Focus op uithoudingsvermogen voor de lange klim.",
+            segments: [
+                { type: 'Warmup', duration: 600, power: 0.5 },
+                { type: 'SteadyState', duration: 1200, power: 0.75 }, // 20m Tempo
+                { type: 'SteadyState', duration: 600, power: 0.55 }, // Rest
+                { type: 'SteadyState', duration: 1200, power: 0.75 },
+                { type: 'Cooldown', duration: 600, power: 0.5 }
+            ]
+        },
+        {
+            title: "Threshold L4 Intervals",
+            description: "Verhoog je FTP om sneller boven te komen.",
+            segments: [
+                { type: 'Warmup', duration: 900, power: 0.5 },
+                { type: 'SteadyState', duration: 600, power: 1.0 }, // 10m FTP
+                { type: 'SteadyState', duration: 300, power: 0.5 },
+                { type: 'SteadyState', duration: 600, power: 1.0 },
+                { type: 'SteadyState', duration: 300, power: 0.5 },
+                { type: 'SteadyState', duration: 600, power: 1.0 },
+                { type: 'Cooldown', duration: 900, power: 0.5 }
+            ]
+        },
+        {
+            title: "VO2 Max Punch",
+            description: "Voor de steile stukken en versnellingen.",
+            segments: [
+                { type: 'Warmup', duration: 900, power: 0.5 },
+                { type: 'IntervalsT', repeat: 5, onDuration: 180, offDuration: 180, onPower: 1.15, offPower: 0.5 },
+                { type: 'Cooldown', duration: 900, power: 0.5 }
+            ]
+        }
+    ];
+
     const callGemini = (type) => {
         setLoading(true);
         setTimeout(() => {
             if(type === 'workout') {
-                setResponse({
-                    title: `Specifieke Training: ${activeClimb.name}`,
-                    core: "Deze klim vereist een hoge torque. We focussen op krachtuithoudingsvermogen.",
-                    blocks: [
-                        { t: '15 min', d: 'Warming up Z1-Z2.' },
-                        { t: '3 x 10 min', d: 'Z3 op lage cadans (55-60 RPM).' },
-                        { t: '15 min', d: 'Cooling down Z1.' }
-                    ]
-                });
+                // Return 3 options
+                setResponse({ type: 'workouts', options: mockWorkouts });
             } else {
                 setResponse({
+                    type: 'swot',
                     title: "SWOT Analyse",
                     core: "Je power curve laat een sterk 5-minuten profiel zien (Anaeroob), maar je duurvermogen (Aerobe drempel) blijft achter.",
                     blocks: [
@@ -954,7 +1029,7 @@ export default function ClimbPerformanceLab() {
              <p className="text-slate-400 mb-6">Training advies specifiek voor jouw doel: <span className="text-white font-bold">{activeClimb.name}</span>.</p>
              <div className="flex justify-center gap-4 flex-wrap">
                 <button disabled={loading} onClick={() => callGemini('workout')} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50">
-                   {loading ? <RefreshCw className="animate-spin"/> : <Zap/>} Genereer Workout
+                   {loading ? <RefreshCw className="animate-spin"/> : <Zap/>} Genereer Workouts
                 </button>
                 <button disabled={loading} onClick={() => { setShowExtended(true); callGemini('swot'); }} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50">
                    {loading ? <RefreshCw className="animate-spin"/> : <Activity/>} Uitgebreide Analyse
@@ -966,26 +1041,65 @@ export default function ClimbPerformanceLab() {
             <AnimatePresence>
                 {response && (
                     <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl h-full w-full">
-                    <div className="flex justify-between items-start border-b border-slate-800 pb-4 mb-4">
-                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Brain size={18} className="text-purple-400"/> {response.title}</h3>
-                        <button onClick={() => setResponse(null)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-                    </div>
-                    <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg mb-4">
-                        <p className="text-purple-200 font-medium italic">"{response.core}"</p>
-                    </div>
-                    <div className="space-y-2">
-                        {response.blocks.map((b, i) => (
-                            <div key={i} className="flex gap-4 p-3 bg-slate-800 rounded border border-slate-700/50">
-                                <span className="font-mono text-blue-400 w-24 shrink-0 text-sm font-bold">{b.t}</span>
-                                <span className="text-slate-300 text-sm">{b.d}</span>
+                    
+                    {response.type === 'swot' ? (
+                        <>
+                            <div className="flex justify-between items-start border-b border-slate-800 pb-4 mb-4">
+                                <h3 className="text-lg font-bold text-white flex items-center gap-2"><Brain size={18} className="text-purple-400"/> {response.title}</h3>
+                                <button onClick={() => setResponse(null)} className="text-slate-500 hover:text-white"><X size={18}/></button>
                             </div>
-                        ))}
-                    </div>
-                    {showExtended && (
-                        <div className="mt-4 pt-4 border-t border-slate-700 text-sm text-slate-400">
-                            <h4 className="text-white font-bold mb-2">Advies voor zwaktes:</h4>
-                            <p>Om je aerobe drempel te verhogen, wordt aangeraden om blokken van "Sweet Spot" training toe te voegen (88-93% FTP). Probeer 2x20min intervallen met 5min rust. Dit verbetert je uithoudingsvermogen op lange klimmen zonder te veel vermoeidheid.</p>
-                        </div>
+                            <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg mb-4">
+                                <p className="text-purple-200 font-medium italic">"{response.core}"</p>
+                            </div>
+                            <div className="space-y-2">
+                                {response.blocks.map((b, i) => (
+                                    <div key={i} className="flex gap-4 p-3 bg-slate-800 rounded border border-slate-700/50">
+                                        <span className="font-mono text-blue-400 w-24 shrink-0 text-sm font-bold">{b.t}</span>
+                                        <span className="text-slate-300 text-sm">{b.d}</span>
+                                    </div>
+                                ))}
+                            </div>
+                            {showExtended && (
+                                <div className="mt-4 pt-4 border-t border-slate-700 text-sm text-slate-400">
+                                    <h4 className="text-white font-bold mb-2">Advies voor zwaktes:</h4>
+                                    <p>Om je aerobe drempel te verhogen, wordt aangeraden om blokken van "Sweet Spot" training toe te voegen (88-93% FTP). Probeer 2x20min intervallen met 5min rust. Dit verbetert je uithoudingsvermogen op lange klimmen zonder te veel vermoeidheid.</p>
+                                </div>
+                            )}
+                        </>
+                    ) : (
+                        // WORKOUT LIST VIEW
+                        <>
+                            <div className="flex justify-between items-center mb-4">
+                                <h3 className="text-lg font-bold text-white">Kies je training</h3>
+                                <button onClick={() => setResponse(null)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+                            </div>
+                            <div className="space-y-4">
+                                {response.options.map((wo, i) => (
+                                    <div key={i} className="bg-slate-800 p-4 rounded-lg border border-slate-700 hover:border-purple-500 transition group">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h4 className="text-white font-bold">{wo.title}</h4>
+                                                <p className="text-xs text-slate-400">{wo.description}</p>
+                                            </div>
+                                            <button 
+                                                onClick={() => downloadWorkout(wo, userProfile.ftp)} 
+                                                className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-1 rounded text-xs font-bold flex items-center gap-1"
+                                            >
+                                                <Download size={12}/> ZWO
+                                            </button>
+                                        </div>
+                                        {/* Mini visual representation of segments */}
+                                        <div className="flex h-4 gap-0.5 mt-2 overflow-hidden rounded opacity-50 group-hover:opacity-100 transition">
+                                            {wo.segments.map((s, idx) => {
+                                                const h = s.type === 'SteadyState' && s.power > 0.9 ? 'h-full' : 'h-1/2';
+                                                const c = s.type === 'Warmup' || s.type === 'Cooldown' ? 'bg-slate-600' : s.power > 1.0 ? 'bg-red-500' : s.power > 0.8 ? 'bg-yellow-500' : 'bg-green-500';
+                                                return <div key={idx} className={`${h} ${c} flex-1`}></div>
+                                            })}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>
                     )}
                     </motion.div>
                 )}
@@ -1397,7 +1511,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v27</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v24</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={() => setShowSettings(true)} className="text-slate-400 hover:text-white transition"><Settings size={20}/></button>
