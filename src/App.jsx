@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- JOUW FIREBASE CONFIGURATIE ---
+// --- FIREBASE CONFIGURATIE ---
 const firebaseConfig = {
   apiKey: "AIzaSyBNWzcEXhzra-iCkHiZj_FdYUf0NcKvHAk",
   authDomain: "climb-performance-lab.firebaseapp.com",
@@ -57,6 +57,7 @@ const calculateWattsForSpeed = (gradient, weight) => {
 };
 
 const generateNaturalProfile = (distanceKm, elevationM) => {
+  if (!distanceKm || distanceKm <= 0) return []; 
   const segments = 30; 
   const avgGrade = (elevationM / (distanceKm * 1000)) * 100;
   const distPerSeg = distanceKm / segments;
@@ -81,55 +82,179 @@ const generateNaturalProfile = (distanceKm, elevationM) => {
     });
   }
 
-  const finalElev = profile[profile.length - 1].elevation;
-  const scale = elevationM / finalElev;
-  
-  return profile.map(p => ({
-      ...p,
-      elevation: Math.round(p.elevation * scale),
-      gradient: parseFloat((p.gradient * scale).toFixed(1))
-  }));
+  if(profile.length > 0 && elevationM > 0) {
+      const finalElev = profile[profile.length - 1].elevation;
+      const scale = finalElev > 0 ? elevationM / finalElev : 1;
+      return profile.map(p => ({
+          ...p,
+          elevation: Math.round(p.elevation * scale),
+          gradient: parseFloat((p.gradient * scale).toFixed(1))
+      }));
+  }
+  return profile;
 };
 
 const parseDate = (dateStr) => {
     if(!dateStr) return new Date(0);
-    if (dateStr.includes('T')) {
-        return new Date(dateStr);
-    }
+    if (dateStr.includes('T')) return new Date(dateStr);
     const cleanStr = dateStr.split(' ')[0];
     const parts = cleanStr.split(/[\/\-]/);
     if (parts.length === 3) {
-        if (parts[2].length === 4) {
-            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-        }
+        if (parts[2].length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
     }
     return new Date(dateStr);
 };
 
-// --- DATABASE ---
+// --- DATABASE: ZWIFT & PORTAL ---
 
 const ZWIFT_CLIMBS = [
+  // --- Standard Watopia ---
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
   { id: 'z_epic_kom', name: "Epic KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 9.4, elevation: 540, avgGrade: 5.9 },
+  { id: 'z_epic_rev', name: "Epic KOM Reverse", region: "Watopia", country: "Zwift", flag: "🟧", distance: 6.2, elevation: 337, avgGrade: 5.9 },
+  { id: 'z_radio', name: "Radio Tower", region: "Watopia", country: "Zwift", flag: "🟧", distance: 1.1, elevation: 150, avgGrade: 13.7 },
+  { id: 'z_volcano', name: "Volcano KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 3.7, elevation: 125, avgGrade: 3.2 },
+  { id: 'z_hilly', name: "Hilly KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 0.9, elevation: 50, avgGrade: 5.5 },
+  
+  // --- Standard Worlds ---
   { id: 'z_ven_top', name: "Ven-Top", region: "France", country: "Zwift", flag: "🟧", distance: 19.0, elevation: 1534, avgGrade: 8.0 },
+  { id: 'z_petit', name: "Petit KOM", region: "France", country: "Zwift", flag: "🟧", distance: 2.7, elevation: 110, avgGrade: 4.0 },
   { id: 'z_innsbruck', name: "Innsbruck KOM", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 7.4, elevation: 400, avgGrade: 5.4 },
-  { id: 'zp_cote_pike', name: "Côte de Pike", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.0, elevation: 200, avgGrade: 10.0 },
-  { id: 'zp_tourmalet', name: "Col du Tourmalet", region: "Portal", country: "Zwift", flag: "🌀", distance: 17.1, elevation: 1268, avgGrade: 7.4 },
+  { id: 'z_igls', name: "Igls (Reverse)", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 5.6, elevation: 230, avgGrade: 4.1 },
+  { id: 'z_leith', name: "Leith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 134, avgGrade: 6.8 },
+  { id: 'z_keith', name: "Keith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 4.2, elevation: 228, avgGrade: 5.2 },
+  { id: 'z_box', name: "Box Hill", region: "London", country: "Zwift", flag: "🟧", distance: 3.0, elevation: 137, avgGrade: 4.3 },
+  { id: 'z_yorkshire', name: "Yorkshire KOM", region: "Yorkshire", country: "Zwift", flag: "🟧", distance: 1.2, elevation: 55, avgGrade: 4.6 },
+  { id: 'z_temple', name: "Temple KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 2.5, elevation: 99, avgGrade: 3.9 },
+  { id: 'z_rooftop', name: "Rooftop KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 54, avgGrade: 2.7 },
+  { id: 'z_sgurr', name: "Sgurr Summit South", region: "Scotland", country: "Zwift", flag: "🟧", distance: 1.0, elevation: 33, avgGrade: 3.3 },
+  { id: 'z_nyc', name: "NYC KOM", region: "New York", country: "Zwift", flag: "🟧", distance: 1.4, elevation: 89, avgGrade: 6.4 },
+  { id: 'z_bologna', name: "Bologna TT", region: "Italy", country: "Zwift", flag: "🟧", distance: 2.1, elevation: 200, avgGrade: 9.6 },
+
+  // --- CLIMB PORTAL ROTATIONS (FULL LIST) ---
+  { id: 'zp_bealach', name: "Bealach na Bà", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.3, elevation: 632, avgGrade: 6.8 },
+  { id: 'zp_cauberg', name: "Cauberg", region: "Portal", country: "Zwift", flag: "🌀", distance: 0.8, elevation: 57, avgGrade: 7.1 },
+  { id: 'zp_cheddar', name: "Cheddar Gorge", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.7, elevation: 171, avgGrade: 3.6 },
+  { id: 'zp_cipressa', name: "Cipressa", region: "Portal", country: "Zwift", flag: "🌀", distance: 6.4, elevation: 228, avgGrade: 3.5 },
+  { id: 'zp_aspin', name: "Col d'Aspin", region: "Portal", country: "Zwift", flag: "🌀", distance: 13.5, elevation: 807, avgGrade: 5.8 },
+  { id: 'zp_couillole', name: "Col de la Couillole", region: "Portal", country: "Zwift", flag: "🌀", distance: 18.3, elevation: 1209, avgGrade: 6.6 },
+  { id: 'zp_croix', name: "Col de la Croix Saint-Robert", region: "Portal", country: "Zwift", flag: "🌀", distance: 5.7, elevation: 346, avgGrade: 6.1 },
+  { id: 'zp_madeleine', name: "Col de la Madeleine", region: "Portal", country: "Zwift", flag: "🌀", distance: 14.3, elevation: 1118, avgGrade: 7.8 },
+  { id: 'zp_madone', name: "Col de la Madone", region: "Portal", country: "Zwift", flag: "🌀", distance: 16.3, elevation: 902, avgGrade: 5.5 },
+  { id: 'zp_peyresourde', name: "Col de Peyresourde", region: "Portal", country: "Zwift", flag: "🌀", distance: 8.3, elevation: 559, avgGrade: 6.7 },
+  { id: 'zp_aravis', name: "Col des Aravis", region: "Portal", country: "Zwift", flag: "🌀", distance: 5.2, elevation: 273, avgGrade: 5.1 },
+  { id: 'zp_galibier', name: "Col du Galibier (Lautaret)", region: "Portal", country: "Zwift", flag: "🌀", distance: 10.3, elevation: 539, avgGrade: 5.2 },
+  { id: 'zp_platzer', name: "Col du Platzerwasel", region: "Portal", country: "Zwift", flag: "🌀", distance: 7.8, elevation: 592, avgGrade: 7.3 },
+  { id: 'zp_rosier', name: "Col du Rosier", region: "Portal", country: "Zwift", flag: "🌀", distance: 5.0, elevation: 222, avgGrade: 4.5 },
+  { id: 'zp_tourmalet', name: "Col du Tourmalet", region: "Portal", country: "Zwift", flag: "🌀", distance: 17.2, elevation: 1213, avgGrade: 6.9 },
+  { id: 'zp_ordino', name: "Coll d'Ordino", region: "Portal", country: "Zwift", flag: "🌀", distance: 10.3, elevation: 511, avgGrade: 5.0 },
+  { id: 'zp_domancy', name: "Cote de Domancy", region: "Portal", country: "Zwift", flag: "🌀", distance: 3.0, elevation: 240, avgGrade: 7.9 },
+  { id: 'zp_redoute', name: "Côte de La Redoute", region: "Portal", country: "Zwift", flag: "🌀", distance: 1.5, elevation: 153, avgGrade: 10.2 },
+  { id: 'zp_cote_pike', name: "Côte de Pike", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.2, elevation: 215, avgGrade: 9.0 },
+  { id: 'zp_trebiac', name: "Cote de Trebiac", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.6, elevation: 207, avgGrade: 4.2 },
+  { id: 'zp_forche', name: "Côte des Forche", region: "Portal", country: "Zwift", flag: "🌀", distance: 3.0, elevation: 148, avgGrade: 4.9 },
+  { id: 'zp_crow', name: "Crow Road", region: "Portal", country: "Zwift", flag: "🌀", distance: 7.0, elevation: 251, avgGrade: 3.6 },
+  { id: 'zp_gotthard', name: "Gotthard Pass", region: "Portal", country: "Zwift", flag: "🌀", distance: 14.4, elevation: 909, avgGrade: 6.3 },
+  { id: 'zp_hardknott', name: "Hardknott Pass", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.7, elevation: 306, avgGrade: 11.5 },
+  { id: 'zp_hautacam', name: "Hautacam", region: "Portal", country: "Zwift", flag: "🌀", distance: 12.7, elevation: 1029, avgGrade: 8.1 },
+  { id: 'zp_isola', name: "Isola 2000", region: "Portal", country: "Zwift", flag: "🌀", distance: 18.9, elevation: 1145, avgGrade: 5.9 },
+  { id: 'zp_laguna', name: "La Laguna Negra", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.1, elevation: 510, avgGrade: 5.6 },
+  { id: 'zp_planche', name: "La Super Planche", region: "Portal", country: "Zwift", flag: "🌀", distance: 8.6, elevation: 602, avgGrade: 7.0 },
+  { id: 'zp_turbie', name: "La Turbie + Col d'Eze", region: "Portal", country: "Zwift", flag: "🌀", distance: 15.2, elevation: 616, avgGrade: 3.1 },
+  { id: 'zp_lagos', name: "Lagos de Covadonga", region: "Portal", country: "Zwift", flag: "🌀", distance: 14.5, elevation: 976, avgGrade: 6.7 },
+  { id: 'zp_chinaillon', name: "Montée du Chinaillon", region: "Portal", country: "Zwift", flag: "🌀", distance: 8.1, elevation: 353, avgGrade: 4.4 },
+  { id: 'zp_fuji', name: "Mt Fuji", region: "Portal", country: "Zwift", flag: "🌀", distance: 25.6, elevation: 1218, avgGrade: 4.7 },
+  { id: 'zp_hamilton', name: "Mt. Hamilton", region: "Portal", country: "Zwift", flag: "🌀", distance: 31.3, elevation: 1259, avgGrade: 3.5 },
+  { id: 'zp_mur_bretagne', name: "Mûr de Bretagne", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.0, elevation: 129, avgGrade: 6.6 },
+  { id: 'zp_norton', name: "Norton Summit", region: "Portal", country: "Zwift", flag: "🌀", distance: 8.7, elevation: 363, avgGrade: 4.0 },
+  { id: 'zp_old_la_honda', name: "Old La Honda", region: "Portal", country: "Zwift", flag: "🌀", distance: 5.6, elevation: 396, avgGrade: 7.1 },
+  { id: 'zp_willunga', name: "Old Willunga Hill", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.0, elevation: 252, avgGrade: 6.3 },
+  { id: 'zp_kwaremont', name: "Oude Kwaremont", region: "Portal", country: "Zwift", flag: "🌀", distance: 1.5, elevation: 64, avgGrade: 4.3 },
+  { id: 'zp_peyrol', name: "Pas de Peyrol/Puy Mary", region: "Portal", country: "Zwift", flag: "🌀", distance: 10.2, elevation: 603, avgGrade: 5.9 },
+  { id: 'zp_pla_adet', name: "Pla d'Adet", region: "Portal", country: "Zwift", flag: "🌀", distance: 12.1, elevation: 847, avgGrade: 6.9 },
+  { id: 'zp_poggio', name: "Poggio", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.3, elevation: 136, avgGrade: 3.2 },
+  { id: 'zp_puy_dome', name: "Puy de Dome", region: "Portal", country: "Zwift", flag: "🌀", distance: 13.0, elevation: 913, avgGrade: 7.0 },
+  { id: 'zp_rocacorba', name: "Rocacorba", region: "Portal", country: "Zwift", flag: "🌀", distance: 11.8, elevation: 756, avgGrade: 6.4 },
+  { id: 'zp_trollstigen', name: "Trollstigen", region: "Portal", country: "Zwift", flag: "🌀", distance: 12.4, elevation: 784, avgGrade: 6.3 },
 ];
 
 const BENELUX_CLIMBS = [
-  { id: 'nl_camerig', name: "Camerig", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
-  { id: 'nl_vaals', name: "Vaalserberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
+  // NEDERLAND
+  { id: 'nl_camerig', name: "Camerig", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
+  { id: 'nl_vaals', name: "Vaalserberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
+  { id: 'nl_keuten', name: "Keutenberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 68, avgGrade: 5.9 },
+  { id: 'nl_cauberg', name: "Cauberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.8, elevation: 48, avgGrade: 6.5 },
+  { id: 'nl_eyser', name: "Eyserbosweg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.1, elevation: 90, avgGrade: 8.1 },
+  { id: 'nl_gulper', name: "Gulperberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.6, elevation: 55, avgGrade: 9.8 },
+  { id: 'nl_loor', name: "Loorberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.5, elevation: 80, avgGrade: 5.3 },
+  { id: 'nl_from', name: "Fromberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.6, elevation: 65, avgGrade: 4.0 },
+  { id: 'nl_posbank', name: "Posbank", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 2.2, elevation: 85, avgGrade: 3.9 },
+  { id: 'nl_amerong', name: "Amerongse Berg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 1.8, elevation: 65, avgGrade: 3.6 },
+  { id: 'nl_italia', name: "Italiaanseweg", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 55, avgGrade: 4.5 },
+  { id: 'nl_grebbe', name: "Grebbeberg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 0.7, elevation: 40, avgGrade: 5.5 },
+  { id: 'nl_holter', name: "Holterberg", region: "Overijssel", country: "NL", flag: "🇳🇱", distance: 2.5, elevation: 50, avgGrade: 2.0 },
+  { id: 'nl_vam', name: "VAM-Berg", region: "Drenthe", country: "NL", flag: "🇳🇱", distance: 0.5, elevation: 40, avgGrade: 9.6 },
+  // BELGIË
   { id: 'be_redoute', name: "La Redoute", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.6, elevation: 156, avgGrade: 9.5 },
   { id: 'be_stockeu', name: "Côte de Stockeu", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.3, elevation: 227, avgGrade: 9.9 },
+  { id: 'be_rosier', name: "Col du Rosier", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 4.4, elevation: 255, avgGrade: 5.8 },
+  { id: 'be_huy', name: "Mur de Huy", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.3, elevation: 125, avgGrade: 9.6 },
+  { id: 'be_thier', name: "Thier de Coo", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.6, elevation: 220, avgGrade: 8.5 },
+  { id: 'be_baraque', name: "Baraque de Fraiture", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 6.0, elevation: 280, avgGrade: 4.6 },
+  { id: 'be_haussire', name: "Col de Haussire", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 3.8, elevation: 250, avgGrade: 6.5 },
+  { id: 'be_wanne', name: "Côte de Wanne", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.2, elevation: 165, avgGrade: 7.5 },
+  { id: 'be_roche', name: "La Roche-aux-Faucons", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.3, elevation: 145, avgGrade: 11.0 },
+  { id: 'be_kwaremont', name: "Oude Kwaremont", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 2.2, elevation: 93, avgGrade: 4.2 },
+  { id: 'be_pater', name: "Paterberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 0.4, elevation: 48, avgGrade: 12.9 },
+  { id: 'be_koppen', name: "Koppenberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 0.6, elevation: 64, avgGrade: 11.6 },
+  { id: 'be_kemmel', name: "Kemmelberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 1.4, elevation: 109, avgGrade: 7.8 },
+  { id: 'be_muur', name: "Muur van Geraardsbergen", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 1.1, elevation: 92, avgGrade: 8.7 },
+  // LUXEMBURG
+  { id: 'lu_vianden', name: "Mont Saint-Nicolas", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 3.5, elevation: 290, avgGrade: 8.3 },
+  { id: 'lu_bourscheid', name: "Bourscheid-Moulin", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 3.6, elevation: 265, avgGrade: 7.4 },
+  { id: 'lu_esch', name: "Esch-sur-Sûre", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 2.5, elevation: 160, avgGrade: 6.4 },
+  { id: 'lu_putscheid', name: "Putscheid", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 2.8, elevation: 210, avgGrade: 7.5 },
+  { id: 'lu_kauten', name: "Kautenbach", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 4.5, elevation: 230, avgGrade: 5.1 },
 ];
 
 const REAL_WORLD_CLIMBS = [
+  // Frankrijk
   { id: 'alpe_huez', name: "Alpe d'Huez", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 13.8, elevation: 1135, avgGrade: 8.1 },
-  { id: 'ventoux', name: "Mont Ventoux", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.0, elevation: 1610, avgGrade: 7.5 },
-  { id: 'stelvio', name: "Passo dello Stelvio", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 24.3, elevation: 1808, avgGrade: 7.4 },
   { id: 'galibier', name: "Col du Galibier", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 18.1, elevation: 1245, avgGrade: 6.9 },
+  { id: 'glandon', name: "Col du Glandon", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 21.3, elevation: 1472, avgGrade: 6.9 },
+  { id: 'madeleine', name: "Col de la Madeleine", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 19.2, elevation: 1522, avgGrade: 7.9 },
+  { id: 'izoard', name: "Col d'Izoard", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 14.1, elevation: 1000, avgGrade: 7.1 },
+  { id: 'croix_fer', name: "Col de la Croix-de-Fer", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 29.4, elevation: 1520, avgGrade: 5.2 },
+  { id: 'telegraphe', name: "Col du Télégraphe", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 11.8, elevation: 856, avgGrade: 7.3 },
+  { id: 'ventoux', name: "Mont Ventoux (Bédoin)", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.0, elevation: 1610, avgGrade: 7.5 },
+  { id: 'ventoux_mal', name: "Mont Ventoux (Malaucène)", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.2, elevation: 1535, avgGrade: 7.2 },
+  { id: 'puy_dome', name: "Puy de Dôme", region: "Centraal", country: "FR", flag: "🇫🇷", distance: 10.5, elevation: 780, avgGrade: 7.4 },
+  { id: 'planche', name: "Planche des Belles Filles", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 5.9, elevation: 500, avgGrade: 8.5 },
+  { id: 'ballon_alsace', name: "Ballon d'Alsace", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 12.4, elevation: 643, avgGrade: 5.2 },
+  { id: 'grand_ballon', name: "Grand Ballon", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 13.5, elevation: 950, avgGrade: 7.0 },
+  { id: 'tourmalet', name: "Col du Tourmalet", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 18.3, elevation: 1404, avgGrade: 7.7 },
+  { id: 'aubisque', name: "Col d'Aubisque", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 16.6, elevation: 1190, avgGrade: 7.2 },
+  { id: 'hautacam', name: "Hautacam", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 13.5, elevation: 1050, avgGrade: 7.8 },
+  // Italië
+  { id: 'stelvio', name: "Passo dello Stelvio", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 24.3, elevation: 1808, avgGrade: 7.4 },
   { id: 'mortirolo', name: "Mortirolo", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 12.4, elevation: 1300, avgGrade: 10.5 },
+  { id: 'gavia', name: "Passo Gavia", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 17.3, elevation: 1363, avgGrade: 7.9 },
+  { id: 'zoncolan', name: "Monte Zoncolan", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 10.1, elevation: 1210, avgGrade: 11.9 },
+  { id: 'tre_cime', name: "Tre Cime di Lavaredo", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 7.5, elevation: 560, avgGrade: 7.5 },
+  { id: 'finestre', name: "Colle delle Finestre", region: "Alpen", country: "IT", flag: "🇮🇹", distance: 18.6, elevation: 1694, avgGrade: 9.1 },
+  // Spanje
+  { id: 'angliru', name: "Alto de l'Angliru", region: "Asturië", country: "ES", flag: "🇪🇸", distance: 12.5, elevation: 1266, avgGrade: 10.1 },
+  { id: 'lagos', name: "Lagos de Covadonga", region: "Asturië", country: "ES", flag: "🇪🇸", distance: 12.6, elevation: 890, avgGrade: 7.0 },
+  { id: 'teide', name: "Mount Teide", region: "Tenerife", country: "ES", flag: "🇪🇸", distance: 50.0, elevation: 2300, avgGrade: 4.6 },
+  { id: 'sa_calobra', name: "Sa Calobra", region: "Mallorca", country: "ES", flag: "🇪🇸", distance: 9.4, elevation: 670, avgGrade: 7.1 },
+  // UK
+  { id: 'hardknott', name: "Hardknott Pass", region: "Lake District", country: "UK", flag: "🇬🇧", distance: 2.2, elevation: 298, avgGrade: 13.3 },
+  { id: 'wrynose', name: "Wrynose Pass", region: "Lake District", country: "UK", flag: "🇬🇧", distance: 2.7, elevation: 280, avgGrade: 10.4 },
+  { id: 'green_lane', name: "Green Lane", region: "England", country: "UK", flag: "🇬🇧", distance: 5.7, elevation: 347, avgGrade: 6.1 },
+  { id: 'park_rash', name: "Park Rash", region: "England", country: "UK", flag: "🇬🇧", distance: 4.2, elevation: 302, avgGrade: 7.2 },
+  // Duitsland
+  { id: 'nebelhorn', name: "Nebelhorn", region: "Beieren", country: "DE", flag: "🇩🇪", distance: 7.3, elevation: 1102, avgGrade: 15.1 },
+  { id: 'schlappold', name: "Alpe Schlappold", region: "Beieren", country: "DE", flag: "🇩🇪", distance: 7.3, elevation: 876, avgGrade: 12.0 },
 ];
 
 const FULL_CLIMB_DB = [
@@ -240,6 +365,7 @@ export default function ClimbPerformanceLab() {
 
   // --- HELPERS ---
   const activeProfile = useMemo(() => {
+    if (!activeClimb) return [];
     return activeClimb.profile || generateNaturalProfile(activeClimb.distance, activeClimb.elevation);
   }, [activeClimb]);
 
@@ -275,10 +401,12 @@ export default function ClimbPerformanceLab() {
 
   const DashboardComponent = () => {
     const [targetTime, setTargetTime] = useState(60); 
-    const reqSpeed = activeClimb.distance / (targetTime / 60);
-    const reqWatts = calculateWattsForSpeed(activeClimb.avgGrade, userProfile.weight)(reqSpeed);
+    const reqSpeed = (activeClimb?.distance || 10) / (targetTime / 60);
+    const reqWatts = calculateWattsForSpeed(activeClimb?.avgGrade || 5, userProfile.weight)(reqSpeed);
     const gap = reqWatts - userProfile.ftp;
     const [bestPowerTab, setBestPowerTab] = useState('p20');
+
+    if(!activeClimb) return <div>Laden...</div>;
 
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
@@ -447,12 +575,41 @@ export default function ClimbPerformanceLab() {
   };
 
   const ClimbManagerComponent = () => {
+    // State for filters
+    const [mainFilter, setMainFilter] = useState('All'); 
+    const [countryFilter, setCountryFilter] = useState('All');
+    const [regionFilter, setRegionFilter] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
+    
     const [isCreating, setIsCreating] = useState(false);
     const [newClimb, setNewClimb] = useState({ name: '', distance: '', elevation: '', country: 'FR', flag: '🇫🇷' });
 
-    const filteredClimbs = climbs.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Crash prevention: check if climbs exists
+    const safeClimbs = climbs || [];
     
+    // Filter Logic
+    const availableCountries = useMemo(() => {
+        const relevant = mainFilter === 'All' ? safeClimbs : safeClimbs.filter(c => c.type === mainFilter);
+        return [...new Set(relevant.map(c => c.country))].sort();
+    }, [mainFilter, safeClimbs]);
+
+    const availableRegions = useMemo(() => {
+        let relevant = mainFilter === 'All' ? safeClimbs : safeClimbs.filter(c => c.type === mainFilter);
+        if(countryFilter !== 'All') relevant = relevant.filter(c => c.country === countryFilter);
+        return [...new Set(relevant.map(c => c.region))].sort();
+    }, [mainFilter, countryFilter, safeClimbs]);
+
+    const filteredClimbs = safeClimbs.filter(c => {
+       const matchMain = mainFilter === 'All' || c.type === mainFilter;
+       const matchCountry = countryFilter === 'All' || c.country === countryFilter;
+       const matchRegion = regionFilter === 'All' || c.region === regionFilter;
+       const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
+       return matchMain && matchCountry && matchRegion && matchSearch;
+    });
+
+    // Crash prevention: handle null activeClimb
+    if (!activeClimb && safeClimbs.length > 0) setActiveClimb(safeClimbs[0]);
+
     const handleCreate = () => {
        if(!newClimb.name || !newClimb.distance || !newClimb.elevation) return;
        const dist = parseFloat(newClimb.distance);
@@ -477,7 +634,8 @@ export default function ClimbPerformanceLab() {
 
     const deleteClimb = (id) => {
         setClimbs(prev => prev.filter(c => c.id !== id));
-        if(activeClimb.id === id) setActiveClimb(climbs[0]);
+        // Reset active climb if deleted
+        if(activeClimb && activeClimb.id === id) setActiveClimb(safeClimbs[0] || null);
     };
 
     return (
@@ -517,6 +675,25 @@ export default function ClimbPerformanceLab() {
                   </div>
                ) : (
                  <div className="space-y-2">
+                   {/* Filters restored */}
+                   <div className="flex gap-2">
+                      <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={mainFilter} onChange={e => {setMainFilter(e.target.value); setCountryFilter('All'); setRegionFilter('All');}}>
+                        <option value="All">Alle Types</option>
+                        <option value="Real">Real World</option>
+                        <option value="Zwift">Zwift</option>
+                        <option value="Custom">Custom</option>
+                      </select>
+                      <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={countryFilter} onChange={e => {setCountryFilter(e.target.value); setRegionFilter('All');}}>
+                        <option value="All">Alle Landen</option>
+                        {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                   </div>
+                   <div className="flex gap-2">
+                        <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={regionFilter} onChange={e => setRegionFilter(e.target.value)}>
+                            <option value="All">Alle Regio's</option>
+                            {availableRegions.map(r => <option key={r} value={r}>{r}</option>)}
+                        </select>
+                   </div>
                    <div className="relative">
                       <Search className="absolute left-2 top-2 text-slate-500" size={14}/>
                       <input className="w-full bg-slate-800 border border-slate-700 rounded pl-8 p-2 text-xs text-white outline-none" placeholder="Zoek op naam..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
@@ -713,8 +890,6 @@ export default function ClimbPerformanceLab() {
     const [parsedData, setParsedData] = useState([]);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const fileInputRef = useRef(null);
-    const previewRef = useRef(null);
-    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
     const parseCSV = (text) => {
         const lines = text.trim().split('\n');
@@ -741,7 +916,6 @@ export default function ClimbPerformanceLab() {
             }
         }
         setParsedData(results);
-        setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
     const handleFileUpload = (e) => {
@@ -752,7 +926,7 @@ export default function ClimbPerformanceLab() {
         reader.readAsText(file);
     };
 
-    // --- INTERVALS.ICU LOGIC (Improved V21 - Fix visibility) ---
+    // --- INTERVALS.ICU LOGIC (Improved V20 - Fix visibility) ---
     const [icuId, setIcuId] = useState('');
     const [icuKey, setIcuKey] = useState('');
     const [icuLoading, setIcuLoading] = useState(false);
@@ -804,9 +978,7 @@ export default function ClimbPerformanceLab() {
             if (mapped.length === 0) {
                 notify("Geen ritten gevonden met deze filters", "error");
             } else {
-                notify(`${mapped.length} ritten gevonden. Selecteer en bevestig hieronder.`);
-                // Scroll to preview table
-                setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                notify(`${mapped.length} ritten gevonden. Scroll omlaag om te selecteren.`);
             }
 
         } catch (error) {
@@ -828,32 +1000,7 @@ export default function ClimbPerformanceLab() {
         notify(`${toAdd.length} ritten toegevoegd aan logboek!`);
     };
 
-    // Sorting Helper
-    const handleSort = (key) => {
-        setSortConfig(current => ({
-            key, direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
-        }));
-    };
-
-    const sortedLogbook = useMemo(() => {
-        let sortable = [...activities];
-        if (sortConfig.key) {
-            sortable.sort((a, b) => {
-                let aVal = a[sortConfig.key] || 0;
-                let bVal = b[sortConfig.key] || 0;
-                // Special date handling
-                if(sortConfig.key === 'date') {
-                    aVal = parseDate(a.date).getTime();
-                    bVal = parseDate(b.date).getTime();
-                }
-                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
-                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
-                return 0;
-            });
-        }
-        return sortable;
-    }, [activities, sortConfig]);
-
+    const sortedActivities = useMemo(() => [...activities].sort((a,b) => parseDate(b.date) - parseDate(a.date)), [activities]);
     const toggleAll = (state) => setParsedData(parsedData.map(p => ({...p, selected: state})));
 
     return (
@@ -921,86 +1068,49 @@ export default function ClimbPerformanceLab() {
           </div>
 
           {/* PREVIEW & IMPORT AREA */}
-          <div ref={previewRef}>
-            <AnimatePresence>
-                {parsedData.length > 0 && (
-                    <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30 w-full">
-                        <div className="flex justify-between items-center mb-3">
-                            <h4 className="text-green-400 font-bold text-sm">Preview: {parsedData.length} ritten gevonden</h4>
-                            <div className="flex gap-2">
-                                <button onClick={() => toggleAll(true)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select All</button>
-                                <button onClick={() => toggleAll(false)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select None</button>
-                                <button onClick={commitImport} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2">
-                                    <Check size={14}/> Bevestig Import
-                                </button>
-                            </div>
+          <AnimatePresence>
+            {parsedData.length > 0 && (
+                <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30 w-full">
+                    <div className="flex justify-between items-center mb-3">
+                        <h4 className="text-green-400 font-bold text-sm">Preview: {parsedData.length} ritten gevonden</h4>
+                         <div className="flex gap-2">
+                            <button onClick={() => toggleAll(true)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select All</button>
+                            <button onClick={() => toggleAll(false)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select None</button>
+                            <button onClick={commitImport} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2">
+                                <Check size={14}/> Bevestig Import
+                            </button>
                         </div>
-                        <div className="overflow-x-auto border border-slate-700 rounded max-h-96">
-                            <table className="w-full text-xs text-left text-slate-300">
-                                <thead className="bg-slate-900 uppercase sticky top-0">
-                                    <tr>
-                                        <th className="p-2">Sel</th>
-                                        <th className="p-2">Datum</th>
-                                        <th className="p-2">Naam</th>
-                                        <th className="p-2">Duur</th>
-                                        <th className="p-2">HM</th>
-                                        <th className="p-2">Snelh.</th>
-                                        <th className="p-2">HR</th>
-                                        <th className="p-2">Cad</th>
-                                        <th className="p-2">Watt</th>
-                                        <th className="p-2">5m</th>
-                                        <th className="p-2">20m</th>
-                                        <th className="p-2">60m</th>
-                                    </tr>
-                                </thead>
-                                <tbody>{parsedData.map((d,i) => (
-                                    <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                                        <td className="p-2"><input type="checkbox" checked={d.selected} onChange={() => setParsedData(parsedData.map(p => p.id === d.id ? {...p, selected: !p.selected} : p))}/></td>
-                                        <td className="p-2">{d.date}</td>
-                                        <td className="p-2 max-w-[150px] truncate" title={d.name}>{d.name}</td>
-                                        <td className="p-2">{formatTime(d.duration)}</td>
-                                        <td className="p-2">{d.elevation}</td>
-                                        <td className="p-2">{d.speed}</td>
-                                        <td className="p-2">{d.hr || '-'}</td>
-                                        <td className="p-2">{d.cadence || '-'}</td>
-                                        <td className="p-2">{d.power}</td>
-                                        <td className="p-2">{d.p5 || '-'}</td>
-                                        <td className="p-2">{d.p20 || '-'}</td>
-                                        <td className="p-2">{d.p60 || '-'}</td>
-                                    </tr>
-                                ))}</tbody>
-                            </table>
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-          </div>
+                    </div>
+                    <div className="overflow-x-auto border border-slate-700 rounded max-h-96">
+                        <table className="w-full text-xs text-left text-slate-300">
+                            <thead className="bg-slate-900 uppercase sticky top-0"><tr><th className="p-2">Sel</th><th className="p-2">Datum</th><th className="p-2">Naam</th><th className="p-2">Bron</th><th className="p-2">Watt</th><th className="p-2">5m</th><th className="p-2">20m</th><th className="p-2">60m</th></tr></thead>
+                            <tbody>{parsedData.map((d,i) => (
+                                <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                    <td className="p-2"><input type="checkbox" checked={d.selected} onChange={() => setParsedData(parsedData.map(p => p.id === d.id ? {...p, selected: !p.selected} : p))}/></td>
+                                    <td className="p-2">{d.date}</td><td className="p-2 max-w-[150px] truncate" title={d.name}>{d.name}</td><td className="p-2">{d.source}</td><td className="p-2">{d.power}</td><td className="p-2">{d.p5}</td><td className="p-2">{d.p20}</td><td className="p-2">{d.p60}</td>
+                                </tr>
+                            ))}</tbody>
+                        </table>
+                    </div>
+                </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* LOGBOOK TABLE WITH SORTING */}
+          {/* LOGBOOK TABLE */}
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full">
              <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Database size={18}/> Logboek</h3>
              <div className="overflow-x-auto">
                  <table className="w-full text-xs text-left min-w-[800px]">
-                     <thead className="bg-slate-900 text-slate-400 uppercase cursor-pointer">
+                     <thead className="bg-slate-900 text-slate-400 uppercase">
                          <tr>
-                            {[
-                                {k:'date', l:'Datum'}, {k:'name', l:'Naam'}, {k:'duration', l:'Duur'}, {k:'elevation', l:'HM'}, 
-                                {k:'speed', l:'Snelh.', c:'text-cyan-400'}, {k:'hr', l:'HR', c:'text-red-400'}, {k:'cadence', l:'Cad', c:'text-purple-400'}, 
-                                {k:'power', l:'Watt', c:'text-green-400'}, {k:'p5', l:'5m', c:'text-yellow-400'}, {k:'p20', l:'20m', c:'text-orange-400'}, 
-                                {k:'p60', l:'60m', c:'text-red-500'}
-                            ].map(h => (
-                                <th key={h.k} className={`p-3 hover:bg-slate-800 ${h.c || ''}`} onClick={() => handleSort(h.k)}>
-                                    <div className="flex items-center gap-1">
-                                        {h.l}
-                                        {sortConfig.key === h.k && (sortConfig.direction === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/>)}
-                                    </div>
-                                </th>
-                            ))}
+                            <th className="p-3">Datum</th><th className="p-3">Naam</th><th className="p-3">Duur</th><th className="p-3">HM</th>
+                            <th className="p-3 text-cyan-400">Snelh.</th><th className="p-3 text-red-400">HR</th><th className="p-3 text-purple-400">Cad</th>
+                            <th className="p-3 text-green-400">Watt</th><th className="p-3 text-yellow-400">5m</th><th className="p-3 text-orange-400">20m</th><th className="p-3 text-red-500">60m</th>
                             <th className="p-3 text-right">Actie</th>
                          </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-700">
-                         {sortedLogbook.map(a => (
+                         {sortedActivities.map(a => (
                              <tr key={a.id} className="hover:bg-slate-700/30">
                                  <td className="p-3 font-mono text-slate-300">{a.date}</td>
                                  <td className="p-3 font-bold text-white max-w-[150px] truncate" title={a.name}>{a.name}</td>
@@ -1021,6 +1131,7 @@ export default function ClimbPerformanceLab() {
                                                 setDeleteConfirmId(null);
                                             } else {
                                                 setDeleteConfirmId(a.id);
+                                                // Reset confirmation after 3 seconds
                                                 setTimeout(() => setDeleteConfirmId(null), 3000);
                                             }
                                         }} 
@@ -1050,7 +1161,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v22</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v20</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
@@ -1079,3 +1190,5 @@ export default function ClimbPerformanceLab() {
     </div>
   );
 }
+
+
