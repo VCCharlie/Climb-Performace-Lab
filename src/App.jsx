@@ -105,127 +105,30 @@ const parseDate = (dateStr) => {
     return new Date(dateStr);
 };
 
-// --- MASSIVE DATABASE RESTORED ---
+// --- DATABASE ---
 
 const ZWIFT_CLIMBS = [
-  // Watopia
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
   { id: 'z_epic_kom', name: "Epic KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 9.4, elevation: 540, avgGrade: 5.9 },
-  { id: 'z_epic_rev', name: "Epic KOM Reverse", region: "Watopia", country: "Zwift", flag: "🟧", distance: 6.2, elevation: 337, avgGrade: 5.9 },
-  { id: 'z_radio', name: "Radio Tower", region: "Watopia", country: "Zwift", flag: "🟧", distance: 1.1, elevation: 150, avgGrade: 13.7 },
-  { id: 'z_volcano', name: "Volcano KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 3.7, elevation: 125, avgGrade: 3.2 },
-  { id: 'z_hilly', name: "Hilly KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 0.9, elevation: 50, avgGrade: 5.5 },
-  // France
   { id: 'z_ven_top', name: "Ven-Top", region: "France", country: "Zwift", flag: "🟧", distance: 19.0, elevation: 1534, avgGrade: 8.0 },
-  { id: 'z_petit', name: "Petit KOM", region: "France", country: "Zwift", flag: "🟧", distance: 2.7, elevation: 110, avgGrade: 4.0 },
-  // Innsbruck
   { id: 'z_innsbruck', name: "Innsbruck KOM", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 7.4, elevation: 400, avgGrade: 5.4 },
-  { id: 'z_igls', name: "Igls (Reverse)", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 5.6, elevation: 230, avgGrade: 4.1 },
-  // London
-  { id: 'z_leith', name: "Leith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 134, avgGrade: 6.8 },
-  { id: 'z_keith', name: "Keith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 4.2, elevation: 228, avgGrade: 5.2 },
-  { id: 'z_box', name: "Box Hill", region: "London", country: "Zwift", flag: "🟧", distance: 3.0, elevation: 137, avgGrade: 4.3 },
-  // Yorkshire
-  { id: 'z_yorkshire', name: "Yorkshire KOM", region: "Yorkshire", country: "Zwift", flag: "🟧", distance: 1.2, elevation: 55, avgGrade: 4.6 },
-  // Makuri
-  { id: 'z_temple', name: "Temple KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 2.5, elevation: 99, avgGrade: 3.9 },
-  { id: 'z_rooftop', name: "Rooftop KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 54, avgGrade: 2.7 },
-  // Scotland
-  { id: 'z_sgurr', name: "Sgurr Summit South", region: "Scotland", country: "Zwift", flag: "🟧", distance: 1.0, elevation: 33, avgGrade: 3.3 },
-  // New York
-  { id: 'z_nyc', name: "NYC KOM", region: "New York", country: "Zwift", flag: "🟧", distance: 1.4, elevation: 89, avgGrade: 6.4 },
-  // Bologna
-  { id: 'z_bologna', name: "Bologna TT", region: "Italy", country: "Zwift", flag: "🟧", distance: 2.1, elevation: 200, avgGrade: 9.6 },
-  // CLIMB PORTAL ROTATIONS
   { id: 'zp_cote_pike', name: "Côte de Pike", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.0, elevation: 200, avgGrade: 10.0 },
-  { id: 'zp_aravis', name: "Col des Aravis", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.5, elevation: 250, avgGrade: 5.5 },
-  { id: 'zp_aspin', name: "Col d'Aspin", region: "Portal", country: "Zwift", flag: "🌀", distance: 12.0, elevation: 779, avgGrade: 6.5 },
-  { id: 'zp_rocacorba', name: "Rocacorba", region: "Portal", country: "Zwift", flag: "🌀", distance: 13.3, elevation: 800, avgGrade: 6.0 },
-  { id: 'zp_crow_road', name: "Crow Road", region: "Portal", country: "Zwift", flag: "🌀", distance: 5.5, elevation: 250, avgGrade: 4.5 },
-  { id: 'zp_ezaro', name: "Mirador de Ézaro", region: "Portal", country: "Zwift", flag: "🌀", distance: 1.8, elevation: 270, avgGrade: 14.8 },
-  { id: 'zp_platzer', name: "Col du Platzerwasel", region: "Portal", country: "Zwift", flag: "🌀", distance: 7.1, elevation: 590, avgGrade: 8.3 },
   { id: 'zp_tourmalet', name: "Col du Tourmalet", region: "Portal", country: "Zwift", flag: "🌀", distance: 17.1, elevation: 1268, avgGrade: 7.4 },
-  { id: 'zp_superbag', name: "Superbagnères", region: "Portal", country: "Zwift", flag: "🌀", distance: 18.5, elevation: 1100, avgGrade: 6.0 },
-  { id: 'zp_luit', name: "Col de Luitel", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.8, elevation: 800, avgGrade: 8.0 },
 ];
 
 const BENELUX_CLIMBS = [
-  // NEDERLAND
-  { id: 'nl_camerig', name: "Camerig", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
-  { id: 'nl_vaals', name: "Vaalserberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
-  { id: 'nl_keuten', name: "Keutenberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 68, avgGrade: 5.9 },
-  { id: 'nl_cauberg', name: "Cauberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.8, elevation: 48, avgGrade: 6.5 },
-  { id: 'nl_eyser', name: "Eyserbosweg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.1, elevation: 90, avgGrade: 8.1 },
-  { id: 'nl_gulper', name: "Gulperberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.6, elevation: 55, avgGrade: 9.8 },
-  { id: 'nl_loor', name: "Loorberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.5, elevation: 80, avgGrade: 5.3 },
-  { id: 'nl_from', name: "Fromberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.6, elevation: 65, avgGrade: 4.0 },
-  { id: 'nl_posbank', name: "Posbank", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 2.2, elevation: 85, avgGrade: 3.9 },
-  { id: 'nl_amerong', name: "Amerongse Berg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 1.8, elevation: 65, avgGrade: 3.6 },
-  { id: 'nl_italia', name: "Italiaanseweg", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 55, avgGrade: 4.5 },
-  { id: 'nl_grebbe', name: "Grebbeberg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 0.7, elevation: 40, avgGrade: 5.5 },
-  { id: 'nl_holter', name: "Holterberg", region: "Overijssel", country: "NL", flag: "🇳🇱", distance: 2.5, elevation: 50, avgGrade: 2.0 },
-  { id: 'nl_vam', name: "VAM-Berg", region: "Drenthe", country: "NL", flag: "🇳🇱", distance: 0.5, elevation: 40, avgGrade: 9.6 },
-  // BELGIË
+  { id: 'nl_camerig', name: "Camerig", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
+  { id: 'nl_vaals', name: "Vaalserberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
   { id: 'be_redoute', name: "La Redoute", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.6, elevation: 156, avgGrade: 9.5 },
   { id: 'be_stockeu', name: "Côte de Stockeu", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.3, elevation: 227, avgGrade: 9.9 },
-  { id: 'be_rosier', name: "Col du Rosier", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 4.4, elevation: 255, avgGrade: 5.8 },
-  { id: 'be_huy', name: "Mur de Huy", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.3, elevation: 125, avgGrade: 9.6 },
-  { id: 'be_thier', name: "Thier de Coo", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.6, elevation: 220, avgGrade: 8.5 },
-  { id: 'be_baraque', name: "Baraque de Fraiture", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 6.0, elevation: 280, avgGrade: 4.6 },
-  { id: 'be_haussire', name: "Col de Haussire", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 3.8, elevation: 250, avgGrade: 6.5 },
-  { id: 'be_wanne', name: "Côte de Wanne", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 2.2, elevation: 165, avgGrade: 7.5 },
-  { id: 'be_roche', name: "La Roche-aux-Faucons", region: "Ardennen", country: "BE", flag: "🇧🇪", distance: 1.3, elevation: 145, avgGrade: 11.0 },
-  { id: 'be_kwaremont', name: "Oude Kwaremont", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 2.2, elevation: 93, avgGrade: 4.2 },
-  { id: 'be_pater', name: "Paterberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 0.4, elevation: 48, avgGrade: 12.9 },
-  { id: 'be_koppen', name: "Koppenberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 0.6, elevation: 64, avgGrade: 11.6 },
-  { id: 'be_kemmel', name: "Kemmelberg", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 1.4, elevation: 109, avgGrade: 7.8 },
-  { id: 'be_muur', name: "Muur van Geraardsbergen", region: "Vlaanderen", country: "BE", flag: "🇧🇪", distance: 1.1, elevation: 92, avgGrade: 8.7 },
-  // LUXEMBURG
-  { id: 'lu_vianden', name: "Mont Saint-Nicolas", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 3.5, elevation: 290, avgGrade: 8.3 },
-  { id: 'lu_bourscheid', name: "Bourscheid-Moulin", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 3.6, elevation: 265, avgGrade: 7.4 },
-  { id: 'lu_esch', name: "Esch-sur-Sûre", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 2.5, elevation: 160, avgGrade: 6.4 },
-  { id: 'lu_putscheid', name: "Putscheid", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 2.8, elevation: 210, avgGrade: 7.5 },
-  { id: 'lu_kauten', name: "Kautenbach", region: "Luxemburg", country: "LU", flag: "🇱🇺", distance: 4.5, elevation: 230, avgGrade: 5.1 },
 ];
 
 const REAL_WORLD_CLIMBS = [
-  // Frankrijk
   { id: 'alpe_huez', name: "Alpe d'Huez", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 13.8, elevation: 1135, avgGrade: 8.1 },
-  { id: 'galibier', name: "Col du Galibier", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 18.1, elevation: 1245, avgGrade: 6.9 },
-  { id: 'glandon', name: "Col du Glandon", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 21.3, elevation: 1472, avgGrade: 6.9 },
-  { id: 'madeleine', name: "Col de la Madeleine", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 19.2, elevation: 1522, avgGrade: 7.9 },
-  { id: 'izoard', name: "Col d'Izoard", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 14.1, elevation: 1000, avgGrade: 7.1 },
-  { id: 'croix_fer', name: "Col de la Croix-de-Fer", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 29.4, elevation: 1520, avgGrade: 5.2 },
-  { id: 'telegraphe', name: "Col du Télégraphe", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 11.8, elevation: 856, avgGrade: 7.3 },
-  { id: 'ventoux', name: "Mont Ventoux (Bédoin)", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.0, elevation: 1610, avgGrade: 7.5 },
-  { id: 'ventoux_mal', name: "Mont Ventoux (Malaucène)", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.2, elevation: 1535, avgGrade: 7.2 },
-  { id: 'puy_dome', name: "Puy de Dôme", region: "Centraal", country: "FR", flag: "🇫🇷", distance: 10.5, elevation: 780, avgGrade: 7.4 },
-  { id: 'planche', name: "Planche des Belles Filles", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 5.9, elevation: 500, avgGrade: 8.5 },
-  { id: 'ballon_alsace', name: "Ballon d'Alsace", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 12.4, elevation: 643, avgGrade: 5.2 },
-  { id: 'grand_ballon', name: "Grand Ballon", region: "Vogezen", country: "FR", flag: "🇫🇷", distance: 13.5, elevation: 950, avgGrade: 7.0 },
-  { id: 'tourmalet', name: "Col du Tourmalet", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 18.3, elevation: 1404, avgGrade: 7.7 },
-  { id: 'aubisque', name: "Col d'Aubisque", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 16.6, elevation: 1190, avgGrade: 7.2 },
-  { id: 'hautacam', name: "Hautacam", region: "Pyreneeën", country: "FR", flag: "🇫🇷", distance: 13.5, elevation: 1050, avgGrade: 7.8 },
-  // Italië
+  { id: 'ventoux', name: "Mont Ventoux", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.0, elevation: 1610, avgGrade: 7.5 },
   { id: 'stelvio', name: "Passo dello Stelvio", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 24.3, elevation: 1808, avgGrade: 7.4 },
+  { id: 'galibier', name: "Col du Galibier", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 18.1, elevation: 1245, avgGrade: 6.9 },
   { id: 'mortirolo', name: "Mortirolo", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 12.4, elevation: 1300, avgGrade: 10.5 },
-  { id: 'gavia', name: "Passo Gavia", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 17.3, elevation: 1363, avgGrade: 7.9 },
-  { id: 'zoncolan', name: "Monte Zoncolan", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 10.1, elevation: 1210, avgGrade: 11.9 },
-  { id: 'tre_cime', name: "Tre Cime di Lavaredo", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 7.5, elevation: 560, avgGrade: 7.5 },
-  { id: 'finestre', name: "Colle delle Finestre", region: "Alpen", country: "IT", flag: "🇮🇹", distance: 18.6, elevation: 1694, avgGrade: 9.1 },
-  // Spanje
-  { id: 'angliru', name: "Alto de l'Angliru", region: "Asturië", country: "ES", flag: "🇪🇸", distance: 12.5, elevation: 1266, avgGrade: 10.1 },
-  { id: 'lagos', name: "Lagos de Covadonga", region: "Asturië", country: "ES", flag: "🇪🇸", distance: 12.6, elevation: 890, avgGrade: 7.0 },
-  { id: 'teide', name: "Mount Teide", region: "Tenerife", country: "ES", flag: "🇪🇸", distance: 50.0, elevation: 2300, avgGrade: 4.6 },
-  { id: 'sa_calobra', name: "Sa Calobra", region: "Mallorca", country: "ES", flag: "🇪🇸", distance: 9.4, elevation: 670, avgGrade: 7.1 },
-  // UK
-  { id: 'hardknott', name: "Hardknott Pass", region: "Lake District", country: "UK", flag: "🇬🇧", distance: 2.2, elevation: 298, avgGrade: 13.3 },
-  { id: 'wrynose', name: "Wrynose Pass", region: "Lake District", country: "UK", flag: "🇬🇧", distance: 2.7, elevation: 280, avgGrade: 10.4 },
-  { id: 'green_lane', name: "Green Lane", region: "England", country: "UK", flag: "🇬🇧", distance: 5.7, elevation: 347, avgGrade: 6.1 },
-  { id: 'park_rash', name: "Park Rash", region: "England", country: "UK", flag: "🇬🇧", distance: 4.2, elevation: 302, avgGrade: 7.2 },
-  // Duitsland
-  { id: 'nebelhorn', name: "Nebelhorn", region: "Beieren", country: "DE", flag: "🇩🇪", distance: 7.3, elevation: 1102, avgGrade: 15.1 },
-  { id: 'schlappold', name: "Alpe Schlappold", region: "Beieren", country: "DE", flag: "🇩🇪", distance: 7.3, elevation: 876, avgGrade: 12.0 },
 ];
 
 const FULL_CLIMB_DB = [
@@ -861,6 +764,7 @@ export default function ClimbPerformanceLab() {
     const [parsedData, setParsedData] = useState([]);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const fileInputRef = useRef(null);
+    const previewRef = useRef(null); // Ref to scroll to preview
 
     const parseCSV = (text) => {
         const lines = text.trim().split('\n');
@@ -887,6 +791,8 @@ export default function ClimbPerformanceLab() {
             }
         }
         setParsedData(results);
+        // Scroll to preview after a short delay to allow rendering
+        setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
     const handleFileUpload = (e) => {
@@ -897,7 +803,7 @@ export default function ClimbPerformanceLab() {
         reader.readAsText(file);
     };
 
-    // --- INTERVALS.ICU LOGIC (Improved V20 - Fix visibility) ---
+    // --- INTERVALS.ICU LOGIC (Improved V21 - Fix visibility) ---
     const [icuId, setIcuId] = useState('');
     const [icuKey, setIcuKey] = useState('');
     const [icuLoading, setIcuLoading] = useState(false);
@@ -949,7 +855,9 @@ export default function ClimbPerformanceLab() {
             if (mapped.length === 0) {
                 notify("Geen ritten gevonden met deze filters", "error");
             } else {
-                notify(`${mapped.length} ritten gevonden. Scroll omlaag om te selecteren.`);
+                notify(`${mapped.length} ritten gevonden. Selecteer en bevestig hieronder.`);
+                // Scroll to preview table
+                setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
             }
 
         } catch (error) {
@@ -1039,33 +947,60 @@ export default function ClimbPerformanceLab() {
           </div>
 
           {/* PREVIEW & IMPORT AREA */}
-          <AnimatePresence>
-            {parsedData.length > 0 && (
-                <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30 w-full">
-                    <div className="flex justify-between items-center mb-3">
-                        <h4 className="text-green-400 font-bold text-sm">Preview: {parsedData.length} ritten gevonden</h4>
-                         <div className="flex gap-2">
-                            <button onClick={() => toggleAll(true)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select All</button>
-                            <button onClick={() => toggleAll(false)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select None</button>
-                            <button onClick={commitImport} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2">
-                                <Check size={14}/> Bevestig Import
-                            </button>
+          <div ref={previewRef}>
+            <AnimatePresence>
+                {parsedData.length > 0 && (
+                    <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30 w-full">
+                        <div className="flex justify-between items-center mb-3">
+                            <h4 className="text-green-400 font-bold text-sm">Preview: {parsedData.length} ritten gevonden</h4>
+                            <div className="flex gap-2">
+                                <button onClick={() => toggleAll(true)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select All</button>
+                                <button onClick={() => toggleAll(false)} className="text-[10px] text-slate-400 hover:text-white uppercase">Select None</button>
+                                <button onClick={commitImport} className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-xs font-bold flex items-center gap-2">
+                                    <Check size={14}/> Bevestig Import
+                                </button>
+                            </div>
                         </div>
-                    </div>
-                    <div className="overflow-x-auto border border-slate-700 rounded max-h-96">
-                        <table className="w-full text-xs text-left text-slate-300">
-                            <thead className="bg-slate-900 uppercase sticky top-0"><tr><th className="p-2">Sel</th><th className="p-2">Datum</th><th className="p-2">Naam</th><th className="p-2">Bron</th><th className="p-2">Watt</th><th className="p-2">5m</th><th className="p-2">20m</th><th className="p-2">60m</th></tr></thead>
-                            <tbody>{parsedData.map((d,i) => (
-                                <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                                    <td className="p-2"><input type="checkbox" checked={d.selected} onChange={() => setParsedData(parsedData.map(p => p.id === d.id ? {...p, selected: !p.selected} : p))}/></td>
-                                    <td className="p-2">{d.date}</td><td className="p-2 max-w-[150px] truncate" title={d.name}>{d.name}</td><td className="p-2">{d.source}</td><td className="p-2">{d.power}</td><td className="p-2">{d.p5}</td><td className="p-2">{d.p20}</td><td className="p-2">{d.p60}</td>
-                                </tr>
-                            ))}</tbody>
-                        </table>
-                    </div>
-                </motion.div>
-            )}
-          </AnimatePresence>
+                        <div className="overflow-x-auto border border-slate-700 rounded max-h-96">
+                            <table className="w-full text-xs text-left text-slate-300">
+                                <thead className="bg-slate-900 uppercase sticky top-0">
+                                    <tr>
+                                        <th className="p-2">Sel</th>
+                                        <th className="p-2">Datum</th>
+                                        <th className="p-2">Naam</th>
+                                        <th className="p-2">Duur</th>
+                                        <th className="p-2">HM</th>
+                                        <th className="p-2">Snelh.</th>
+                                        <th className="p-2">HR</th>
+                                        <th className="p-2">Cad</th>
+                                        <th className="p-2">Watt</th>
+                                        <th className="p-2">5m</th>
+                                        <th className="p-2">20m</th>
+                                        <th className="p-2">60m</th>
+                                    </tr>
+                                </thead>
+                                <tbody>{parsedData.map((d,i) => (
+                                    <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                        <td className="p-2"><input type="checkbox" checked={d.selected} onChange={() => setParsedData(parsedData.map(p => p.id === d.id ? {...p, selected: !p.selected} : p))}/></td>
+                                        <td className="p-2">{d.date}</td>
+                                        <td className="p-2 max-w-[150px] truncate" title={d.name}>{d.name}</td>
+                                        <td className="p-2">{formatTime(d.duration)}</td>
+                                        <td className="p-2">{d.elevation}</td>
+                                        <td className="p-2">{d.speed}</td>
+                                        <td className="p-2">{d.hr || '-'}</td>
+                                        <td className="p-2">{d.cadence || '-'}</td>
+                                        <td className="p-2">{d.power}</td>
+                                        <td className="p-2">{d.p5 || '-'}</td>
+                                        <td className="p-2">{d.p20 || '-'}</td>
+                                        <td className="p-2">{d.p60 || '-'}</td>
+                                    </tr>
+                                ))}</tbody>
+                            </table>
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+          </div>
 
           {/* LOGBOOK TABLE */}
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full">
@@ -1132,7 +1067,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v20</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v21</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
