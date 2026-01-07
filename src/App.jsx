@@ -4,11 +4,11 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle, ArrowUp, ArrowDown
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle, ArrowUp, ArrowDown, ExternalLink, LogOut
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
-  ResponsiveContainer, BarChart, Bar, AreaChart, Area, Legend
+  ResponsiveContainer, BarChart, Bar, AreaChart, Area, Legend, ComposedChart
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -58,7 +58,7 @@ const calculateWattsForSpeed = (gradient, weight) => {
 
 const generateNaturalProfile = (distanceKm, elevationM) => {
   if (!distanceKm || distanceKm <= 0) return []; 
-  const segments = 30; 
+  const segments = 40; 
   const avgGrade = (elevationM / (distanceKm * 1000)) * 100;
   const distPerSeg = distanceKm / segments;
   let currentElev = 0;
@@ -105,10 +105,36 @@ const parseDate = (dateStr) => {
     return new Date(dateStr);
 };
 
-// --- MASSIVE DATABASE (COMPLETE) ---
+// Helper for Trendlines (Linear Regression approximation)
+const addTrendline = (data, key, dateKey = 'sortDate') => {
+    if (data.length < 2) return data;
+    // Simple moving average for trend "feel" or linear regression
+    // Let's do linear regression for a straight trend line
+    let n = data.length;
+    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    
+    data.forEach((d, i) => {
+        let x = i;
+        let y = d[key];
+        sumX += x;
+        sumY += y;
+        sumXY += x * y;
+        sumXX += x * x;
+    });
+
+    let slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    let intercept = (sumY - slope * sumX) / n;
+
+    return data.map((d, i) => ({
+        ...d,
+        trend: Math.round(slope * i + intercept)
+    }));
+};
+
+// --- DATABASE ---
 
 const ZWIFT_CLIMBS = [
-  // --- Watopia ---
+  // Watopia & Worlds
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
   { id: 'z_epic_kom', name: "Epic KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 9.4, elevation: 540, avgGrade: 5.9 },
   { id: 'z_epic_rev', name: "Epic KOM Reverse", region: "Watopia", country: "Zwift", flag: "🟧", distance: 6.2, elevation: 337, avgGrade: 5.9 },
@@ -116,29 +142,29 @@ const ZWIFT_CLIMBS = [
   { id: 'z_volcano', name: "Volcano KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 3.7, elevation: 125, avgGrade: 3.2 },
   { id: 'z_hilly', name: "Hilly KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 0.9, elevation: 50, avgGrade: 5.5 },
   { id: 'z_titans', name: "Titans Grove KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 2.6, elevation: 119, avgGrade: 4.6 },
-  // --- France ---
+  // France
   { id: 'z_ven_top', name: "Ven-Top", region: "France", country: "Zwift", flag: "🟧", distance: 19.0, elevation: 1534, avgGrade: 8.0 },
   { id: 'z_petit', name: "Petit KOM", region: "France", country: "Zwift", flag: "🟧", distance: 2.7, elevation: 110, avgGrade: 4.0 },
-  // --- Innsbruck ---
+  // Innsbruck
   { id: 'z_innsbruck', name: "Innsbruck KOM", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 7.4, elevation: 400, avgGrade: 5.4 },
   { id: 'z_igls', name: "Igls (Reverse)", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 5.6, elevation: 230, avgGrade: 4.1 },
-  // --- London ---
+  // London
   { id: 'z_leith', name: "Leith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 134, avgGrade: 6.8 },
   { id: 'z_keith', name: "Keith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 4.2, elevation: 228, avgGrade: 5.2 },
   { id: 'z_box', name: "Box Hill", region: "London", country: "Zwift", flag: "🟧", distance: 3.0, elevation: 137, avgGrade: 4.3 },
-  // --- Yorkshire ---
+  // Yorkshire
   { id: 'z_yorkshire', name: "Yorkshire KOM", region: "Yorkshire", country: "Zwift", flag: "🟧", distance: 1.2, elevation: 55, avgGrade: 4.6 },
-  // --- Makuri ---
+  // Makuri
   { id: 'z_temple', name: "Temple KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 2.5, elevation: 99, avgGrade: 3.9 },
   { id: 'z_rooftop', name: "Rooftop KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 54, avgGrade: 2.7 },
-  // --- Scotland ---
+  // Scotland
   { id: 'z_sgurr', name: "Sgurr Summit South", region: "Scotland", country: "Zwift", flag: "🟧", distance: 1.0, elevation: 33, avgGrade: 3.3 },
-  // --- New York ---
+  // New York
   { id: 'z_nyc', name: "NYC KOM", region: "New York", country: "Zwift", flag: "🟧", distance: 1.4, elevation: 89, avgGrade: 6.4 },
-  // --- Bologna ---
+  // Bologna
   { id: 'z_bologna', name: "Bologna TT", region: "Italy", country: "Zwift", flag: "🟧", distance: 2.1, elevation: 200, avgGrade: 9.6 },
 
-  // --- CLIMB PORTAL ROTATIONS (FULL COMPLETE LIST) ---
+  // --- CLIMB PORTAL ROTATIONS ---
   { id: 'zp_bealach', name: "Bealach na Bà", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.0, elevation: 632, avgGrade: 7.0 },
   { id: 'zp_cauberg', name: "Cauberg", region: "Portal", country: "Zwift", flag: "🌀", distance: 0.8, elevation: 57, avgGrade: 7.1 },
   { id: 'zp_cheddar', name: "Cheddar Gorge", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.7, elevation: 171, avgGrade: 3.6 },
@@ -196,9 +222,9 @@ const BENELUX_CLIMBS = [
   { id: 'nl_loor', name: "Loorberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.5, elevation: 80, avgGrade: 5.3 },
   { id: 'nl_from', name: "Fromberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.6, elevation: 65, avgGrade: 4.0 },
   { id: 'nl_posbank', name: "Posbank", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 2.2, elevation: 85, avgGrade: 3.9 },
-  { id: 'nl_amerong', name: "Amerongse Berg", region: "Utrecht", country: "NL", flag: "🇳🇱", distance: 1.8, elevation: 65, avgGrade: 3.6 },
+  { id: 'nl_amerong', name: "Amerongse Berg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 1.8, elevation: 65, avgGrade: 3.6 },
   { id: 'nl_italia', name: "Italiaanseweg", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 55, avgGrade: 4.5 },
-  { id: 'nl_grebbe', name: "Grebbeberg", region: "Utrecht", country: "NL", flag: "🇳🇱", distance: 0.7, elevation: 40, avgGrade: 5.5 },
+  { id: 'nl_grebbe', name: "Grebbeberg", region: "Utrechtse Heuvelrug", country: "NL", flag: "🇳🇱", distance: 0.7, elevation: 40, avgGrade: 5.5 },
   { id: 'nl_holter', name: "Holterberg", region: "Overijssel", country: "NL", flag: "🇳🇱", distance: 2.5, elevation: 50, avgGrade: 2.0 },
   { id: 'nl_vam', name: "VAM-Berg", region: "Drenthe", country: "NL", flag: "🇳🇱", distance: 0.5, elevation: 40, avgGrade: 9.6 },
   // BELGIË
@@ -285,6 +311,13 @@ export default function ClimbPerformanceLab() {
   const [loading, setLoading] = useState(true);
   const [notification, setNotification] = useState(null);
   const [syncStatus, setSyncStatus] = useState('idle');
+  const [showSettings, setShowSettings] = useState(false);
+  const [geminiKey, setGeminiKey] = useState('');
+  const [externalLinks, setExternalLinks] = useState({
+      strava: 'https://strava.com',
+      intervals: 'https://intervals.icu',
+      climbfinder: 'https://climbfinder.com'
+  });
 
   // --- PERSISTENCE & SYNC ---
   useEffect(() => {
@@ -304,6 +337,10 @@ export default function ClimbPerformanceLab() {
                             return [...prev.filter(c => !newIds.has(c.id)), ...customs];
                         });
                     }
+                    if(data.settings) {
+                        if(data.settings.geminiKey) setGeminiKey(data.settings.geminiKey);
+                        if(data.settings.links) setExternalLinks(data.settings.links);
+                    }
                     setLoading(false);
                     return; 
                 }
@@ -315,6 +352,7 @@ export default function ClimbPerformanceLab() {
         const savedProfile = localStorage.getItem('cpl_profile');
         const savedActivities = localStorage.getItem('cpl_activities');
         const savedCustomClimbs = localStorage.getItem('cpl_custom_climbs');
+        const savedSettings = localStorage.getItem('cpl_settings');
 
         if (savedProfile) setUserProfile(JSON.parse(savedProfile));
         if (savedActivities) setActivities(JSON.parse(savedActivities));
@@ -325,6 +363,11 @@ export default function ClimbPerformanceLab() {
                 return [...prev.filter(c => !newIds.has(c.id)), ...customs];
             });
         }
+        if (savedSettings) {
+            const settings = JSON.parse(savedSettings);
+            setGeminiKey(settings.geminiKey || '');
+            setExternalLinks(settings.links || externalLinks);
+        }
         setLoading(false);
     };
     loadData();
@@ -334,8 +377,9 @@ export default function ClimbPerformanceLab() {
     if(!loading) {
         localStorage.setItem('cpl_profile', JSON.stringify(userProfile));
         localStorage.setItem('cpl_activities', JSON.stringify(activities));
+        localStorage.setItem('cpl_settings', JSON.stringify({ geminiKey, links: externalLinks }));
     }
-  }, [userProfile, activities, loading]);
+  }, [userProfile, activities, geminiKey, externalLinks, loading]);
 
   const handleCloudSync = async () => {
       setSyncStatus('syncing');
@@ -346,6 +390,7 @@ export default function ClimbPerformanceLab() {
               profile: userProfile,
               activities: activities,
               customClimbs: JSON.stringify(customs),
+              settings: { geminiKey, links: externalLinks },
               lastUpdated: new Date().toISOString()
           });
           setSyncStatus('success');
@@ -370,6 +415,13 @@ export default function ClimbPerformanceLab() {
     setTimeout(() => setNotification(null), 3000);
   };
 
+  const handleResetApp = () => {
+      if(window.confirm("Weet je zeker dat je alles wilt resetten? Alle data gaat verloren.")) {
+          localStorage.clear();
+          window.location.reload();
+      }
+  };
+
   // --- HELPERS ---
   const activeProfile = useMemo(() => {
     if (!activeClimb) return [];
@@ -383,19 +435,26 @@ export default function ClimbPerformanceLab() {
     if(ftpTimeRange === '6m') cutoff.setMonth(now.getMonth() - 6);
     if(ftpTimeRange === '1y') cutoff.setFullYear(now.getFullYear() - 1);
 
-    return activities
+    const data = activities
         .map(a => ({ date: a.date, ftp: Math.round((a.p20 || 0) * 0.95), sortDate: parseDate(a.date) }))
         .filter(a => a.sortDate >= cutoff && a.ftp > 0)
         .sort((a,b) => a.sortDate - b.sortDate);
+
+    // Add Trendline
+    return addTrendline(data, 'ftp');
   }, [activities, ftpTimeRange]);
 
-  const loadData = useMemo(() => {
-     const months = ['Aug', 'Sep', 'Okt', 'Nov', 'Dec', 'Jan'];
-     return months.map((m, i) => ({
-         month: m,
-         tss: Math.floor(Math.random() * 300) + 200 + (i * 20)
-     }));
-  }, [activities]);
+  const [tssTimeRange, setTssTimeRange] = useState('all');
+  const tssData = useMemo(() => {
+      // Mock aggregation - in real app, aggregate by week/month from activities
+      const months = ['Aug', 'Sep', 'Okt', 'Nov', 'Dec', 'Jan'];
+      let data = months.map((m, i) => ({ month: m, tss: Math.floor(Math.random() * 300) + 200 + (i * 20), sortIndex: i }));
+      
+      if(tssTimeRange === '6m') data = data.slice(-6);
+      
+      // Add Trendline
+      return addTrendline(data, 'tss');
+  }, [activities, tssTimeRange]);
 
   const getTopPerformances = (metric) => {
       return [...activities]
@@ -405,6 +464,41 @@ export default function ClimbPerformanceLab() {
   };
 
   // --- SUB-COMPONENTS ---
+
+  const SettingsModal = () => {
+      if(!showSettings) return null;
+      return (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+              <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full max-w-md">
+                  <div className="flex justify-between items-center mb-4">
+                      <h3 className="text-xl font-bold text-white flex items-center gap-2"><Settings size={20}/> Instellingen</h3>
+                      <button onClick={() => setShowSettings(false)} className="text-slate-400 hover:text-white"><X/></button>
+                  </div>
+                  
+                  <div className="space-y-4">
+                      <div>
+                          <label className="text-xs text-slate-400 block mb-1">Gemini API Key (Optioneel)</label>
+                          <input type="password" value={geminiKey} onChange={e => setGeminiKey(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-sm" placeholder="AI Studio Key..."/>
+                      </div>
+
+                      <div>
+                          <label className="text-xs text-slate-400 block mb-1">Externe Links</label>
+                          <div className="space-y-2">
+                              <input value={externalLinks.strava} onChange={e => setExternalLinks({...externalLinks, strava:e.target.value})} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Strava URL"/>
+                              <input value={externalLinks.intervals} onChange={e => setExternalLinks({...externalLinks, intervals:e.target.value})} className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white text-xs" placeholder="Intervals.icu URL"/>
+                          </div>
+                      </div>
+
+                      <div className="pt-4 border-t border-slate-700">
+                          <button onClick={handleResetApp} className="w-full bg-red-900/50 hover:bg-red-900 text-red-200 border border-red-800 p-2 rounded flex items-center justify-center gap-2 text-sm">
+                              <LogOut size={16}/> Reset Applicatie (Data Wissen)
+                          </button>
+                      </div>
+                  </div>
+              </div>
+          </div>
+      );
+  };
 
   const DashboardComponent = () => {
     const [targetTime, setTargetTime] = useState(60); 
@@ -423,6 +517,12 @@ export default function ClimbPerformanceLab() {
                 <span className="font-bold">Status:</span> Klik rechtsboven op <strong>"Sync Cloud"</strong> om je ritten veilig in Firebase op te slaan.
             </div>
         </div>
+        
+        {/* Quick Links */}
+        <div className="flex gap-2">
+            <a href={externalLinks.strava} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 bg-orange-900/20 px-2 py-1 rounded"><ExternalLink size={12}/> Strava</a>
+            <a href={externalLinks.intervals} target="_blank" rel="noreferrer" className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300 bg-blue-900/20 px-2 py-1 rounded"><ExternalLink size={12}/> Intervals</a>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-lg p-5">
@@ -430,7 +530,11 @@ export default function ClimbPerformanceLab() {
                <div>
                  <h3 className="text-blue-400 text-xs font-bold uppercase tracking-wider flex items-center gap-2"><TrendingUp size={14}/> Goal Tracker</h3>
                  <h2 className="text-xl font-bold text-white mt-1">{activeClimb.name}</h2>
-                 <p className="text-xs text-slate-500">{activeClimb.distance}km @ {activeClimb.avgGrade}%</p>
+                 <div className="flex gap-3 text-xs text-slate-500 mt-1">
+                     <span>{activeClimb.distance}km</span>
+                     <span>{activeClimb.avgGrade}%</span>
+                     <span className="text-slate-300 font-bold">{activeClimb.elevation}hm</span>
+                 </div>
                </div>
                <div className="text-right">
                  <div className="text-2xl font-bold text-white font-mono">{reqWatts}w</div>
@@ -511,13 +615,14 @@ export default function ClimbPerformanceLab() {
               </div>
               <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={ftpHistory}>
+                  <ComposedChart data={ftpHistory}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
                     <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} />
                     <YAxis domain={['dataMin - 10', 'dataMax + 10']} stroke="#94a3b8" fontSize={10} />
                     <RechartsTooltip contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155'}} />
-                    <Line type="monotone" dataKey="ftp" stroke="#22c55e" strokeWidth={3} dot={{r:3}} />
-                  </LineChart>
+                    <Line type="monotone" dataKey="ftp" stroke="#22c55e" strokeWidth={3} dot={{r:3}} name="FTP" />
+                    <Line type="monotone" dataKey="trend" stroke="#f97316" strokeWidth={2} dot={false} strokeDasharray="5 5" name="Trend" />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
            </div>
@@ -525,13 +630,14 @@ export default function ClimbPerformanceLab() {
               <h4 className="text-slate-300 text-sm font-bold mb-4">Training Load (TSS)</h4>
               <div className="flex-1 min-h-0">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={loadData}>
+                  <ComposedChart data={tssData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#334155" vertical={false} />
                     <XAxis dataKey="month" stroke="#94a3b8" fontSize={10} />
                     <YAxis stroke="#94a3b8" fontSize={10} />
                     <RechartsTooltip contentStyle={{backgroundColor: '#0f172a', borderColor: '#334155'}} />
-                    <Bar dataKey="tss" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                  </BarChart>
+                    <Bar dataKey="tss" fill="#3b82f6" radius={[4, 4, 0, 0]} name="TSS" />
+                    <Line type="monotone" dataKey="trend" stroke="#f97316" strokeWidth={2} dot={false} name="Trend" />
+                  </ComposedChart>
                 </ResponsiveContainer>
               </div>
            </div>
@@ -590,6 +696,7 @@ export default function ClimbPerformanceLab() {
     
     const [isCreating, setIsCreating] = useState(false);
     const [newClimb, setNewClimb] = useState({ name: '', distance: '', elevation: '', country: 'FR', flag: '🇫🇷' });
+    const [smartImportUrl, setSmartImportUrl] = useState('');
 
     // Crash prevention: check if climbs exists
     const safeClimbs = climbs || [];
@@ -639,6 +746,28 @@ export default function ClimbPerformanceLab() {
        notify("Custom klim & natuurlijk profiel gegenereerd!");
     };
 
+    const handleSmartImport = () => {
+        // Mock function to simulate Climbfinder import
+        if (!smartImportUrl.includes('climbfinder.com')) {
+            notify("Voer een geldige climbfinder URL in", "error");
+            return;
+        }
+        notify("Zoeken naar klimgegevens...");
+        // URL parsing logic to extract name
+        const slug = smartImportUrl.split('/').pop().replace(/-/g, ' ');
+        const niceName = slug.charAt(0).toUpperCase() + slug.slice(1);
+        
+        setTimeout(() => {
+            setNewClimb(prev => ({
+                ...prev,
+                name: niceName,
+                country: smartImportUrl.includes('/it/') ? 'IT' : smartImportUrl.includes('/es/') ? 'ES' : 'FR', // Simple heuristic
+                flag: '🏳️'
+            }));
+            notify("Naam gevonden! Vul afstand en hoogtemeters handmatig aan.");
+        }, 800);
+    };
+
     const deleteClimb = (id) => {
         setClimbs(prev => prev.filter(c => c.id !== id));
         // Reset active climb if deleted
@@ -659,6 +788,13 @@ export default function ClimbPerformanceLab() {
                {isCreating ? (
                   <div className="bg-slate-800 border border-slate-600 p-3 rounded space-y-2 animate-in fade-in">
                      <div className="text-xs text-slate-400 mb-2 font-bold uppercase">Custom Climb Creator</div>
+                     
+                     {/* Smart Import Field */}
+                     <div className="flex gap-2 mb-3 border-b border-slate-600 pb-3">
+                        <input className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="Plak Climbfinder URL..." value={smartImportUrl} onChange={e => setSmartImportUrl(e.target.value)}/>
+                        <button onClick={handleSmartImport} className="bg-blue-600 hover:bg-blue-500 text-white px-3 rounded"><Download size={14}/></button>
+                     </div>
+
                      <input className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="Naam" value={newClimb.name} onChange={e => setNewClimb({...newClimb, name: e.target.value})}/>
                      <div className="flex gap-2">
                         <select className="bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" value={newClimb.country} onChange={e => {
@@ -780,28 +916,29 @@ export default function ClimbPerformanceLab() {
   const AICoachComponent = () => {
     const [loading, setLoading] = useState(false);
     const [response, setResponse] = useState(null);
+    const [showExtended, setShowExtended] = useState(false);
 
     const callGemini = (type) => {
         setLoading(true);
         setTimeout(() => {
             if(type === 'workout') {
                 setResponse({
-                    title: `Klim Specifiek: ${activeClimb.name}`,
-                    core: "Deze klim bevat lange secties van >8%. We moeten je spieruithoudingsvermogen (Muscular Endurance) bij lage cadans trainen.",
+                    title: `Specifieke Training: ${activeClimb.name}`,
+                    core: "Deze klim vereist een hoge torque. We focussen op krachtuithoudingsvermogen.",
                     blocks: [
-                        { t: '15 min', d: 'Warming up Z1-Z2 met 3x1 min 110rpm.' },
-                        { t: '3 x 10 min', d: 'Z3 (Tempo) op 55-60 RPM. Focus op torque vanuit de heup. 5 min rust.' },
+                        { t: '15 min', d: 'Warming up Z1-Z2.' },
+                        { t: '3 x 10 min', d: 'Z3 op lage cadans (55-60 RPM).' },
                         { t: '15 min', d: 'Cooling down Z1.' }
                     ]
                 });
             } else {
                 setResponse({
                     title: "SWOT Analyse",
-                    core: "Je power curve laat een klassiek 'Puncheur' profiel zien. Sterk op kort werk, maar uithouding is een aandachtspunt.",
+                    core: "Je power curve laat een sterk 5-minuten profiel zien (Anaeroob), maar je duurvermogen (Aerobe drempel) blijft achter.",
                     blocks: [
-                        { t: 'Sterkte', d: 'Anaerobe capaciteit (5m power is hoog).' },
-                        { t: 'Zwakte', d: 'Aerobe drempel (Verval na 40 min is groot).' },
-                        { t: 'Kans', d: 'Winst te behalen door pacing te vlakken op lange klimmen.' }
+                        { t: 'Sterkte', d: 'Explosiviteit en korte klimmetjes.' },
+                        { t: 'Zwakte', d: 'Lange inspanningen (>40 min).' },
+                        { t: 'Kans', d: 'Winst te behalen door pacing te vlakken.' }
                     ]
                 });
             }
@@ -810,17 +947,17 @@ export default function ClimbPerformanceLab() {
     };
 
     return (
-       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
           <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center shadow-lg h-fit w-full">
              <Brain size={48} className="mx-auto text-purple-400 mb-4"/>
              <h2 className="text-2xl font-bold text-white mb-2">AI Performance Coach</h2>
-             <p className="text-slate-400 mb-6">Context-aware training advies voor <span className="text-white font-bold">{activeClimb.name}</span>.</p>
-             <div className="flex justify-center gap-4">
+             <p className="text-slate-400 mb-6">Training advies specifiek voor jouw doel: <span className="text-white font-bold">{activeClimb.name}</span>.</p>
+             <div className="flex justify-center gap-4 flex-wrap">
                 <button disabled={loading} onClick={() => callGemini('workout')} className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50">
                    {loading ? <RefreshCw className="animate-spin"/> : <Zap/>} Genereer Workout
                 </button>
-                <button disabled={loading} onClick={() => callGemini('swot')} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50">
-                   {loading ? <RefreshCw className="animate-spin"/> : <Activity/>} SWOT Analyse
+                <button disabled={loading} onClick={() => { setShowExtended(true); callGemini('swot'); }} className="bg-slate-700 hover:bg-slate-600 text-white px-6 py-3 rounded-lg font-bold flex items-center gap-2 transition disabled:opacity-50">
+                   {loading ? <RefreshCw className="animate-spin"/> : <Activity/>} Uitgebreide Analyse
                 </button>
              </div>
           </div>
@@ -844,6 +981,12 @@ export default function ClimbPerformanceLab() {
                             </div>
                         ))}
                     </div>
+                    {showExtended && (
+                        <div className="mt-4 pt-4 border-t border-slate-700 text-sm text-slate-400">
+                            <h4 className="text-white font-bold mb-2">Advies voor zwaktes:</h4>
+                            <p>Om je aerobe drempel te verhogen, wordt aangeraden om blokken van "Sweet Spot" training toe te voegen (88-93% FTP). Probeer 2x20min intervallen met 5min rust. Dit verbetert je uithoudingsvermogen op lange klimmen zonder te veel vermoeidheid.</p>
+                        </div>
+                    )}
                     </motion.div>
                 )}
             </AnimatePresence>
@@ -854,13 +997,22 @@ export default function ClimbPerformanceLab() {
   
   const FuelingLabComponent = () => {
     const [duration, setDuration] = useState(60);
-    const [intensity, setIntensity] = useState(0.85);
-    const carbs = Math.round((userProfile.weight > 75 ? 90 : 60) * (duration/60));
-    const fluid = Math.round((500 + userProfile.weight * 5) * (duration/60));
+    const [intensity, setIntensity] = useState(0.85); // Intensity Factor
+    
+    // New Formula based on user feedback
+    // Base needs + Intensity Multiplier
+    // Low intensity (<0.7): ~30-40g/hr
+    // High intensity (>0.85): ~60-90g/hr
+    const carbsPerHour = intensity < 0.7 ? 40 : intensity < 0.85 ? 60 : 90;
+    const carbs = Math.round((duration / 60) * carbsPerHour);
+    
+    // Fluid: Base 500ml + extra for intensity
+    const fluidPerHour = 500 + ((intensity - 0.5) * 1000); // Rough estimate
+    const fluid = Math.round((duration / 60) * fluidPerHour);
 
     return (
-       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-lg w-full">
+       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6 h-full">
+          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-lg w-full h-fit">
              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Droplet className="text-cyan-400"/> Fueling Calculator</h3>
              <div className="space-y-6">
                 <div>
@@ -874,7 +1026,7 @@ export default function ClimbPerformanceLab() {
                 <div className="bg-slate-900 p-4 rounded-xl border border-slate-700 grid grid-cols-2 gap-4">
                    <div>
                       <div className="text-slate-400 text-xs">Carbs Nodig</div>
-                      <div className="text-2xl font-bold text-green-400">{carbs}g</div>
+                      <div className="text-2xl font-bold text-green-400">{carbs}g <span className="text-sm font-normal text-slate-500">({carbsPerHour}g/u)</span></div>
                    </div>
                    <div>
                       <div className="text-slate-400 text-xs">Vocht Nodig</div>
@@ -885,7 +1037,11 @@ export default function ClimbPerformanceLab() {
           </div>
           <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 h-fit w-full">
              <h4 className="text-white font-bold mb-2">AI Nutrition Tip</h4>
-             <p className="text-slate-400 italic text-sm leading-relaxed">"Bij {intensity*100}% intensiteit werkt je maag langzamer. Gebruik isotone gels en vermijd vaste voeding na het eerste uur. Start met 500ml vocht loading 2 uur voor de start. Voor ritten langer dan 2 uur, overweeg natrium toevoeging."</p>
+             <p className="text-slate-400 italic text-sm leading-relaxed">
+                 {intensity > 0.85 
+                    ? "Bij deze hoge intensiteit (>85%) is de opname van vast voedsel lastig. Focus op isotone gels en sportdrank. Start met 'carb-loading' de dag ervoor." 
+                    : "Bij deze gematigde intensiteit kun je ook vaste voeding (repen, bananen) gebruiken. Vergeet niet te blijven drinken."}
+             </p>
           </div>
        </div>
     );
@@ -1171,7 +1327,7 @@ export default function ClimbPerformanceLab() {
                      <thead className="bg-slate-900 text-slate-400 uppercase cursor-pointer">
                          <tr>
                             {[
-                                {k:'date', l:'Datum'}, {k:'name', l:'Naam'}, {k:'duration', l:'Duur'}, {k:'elevation', l:'HM'}, 
+                                {k:'date', l:'Datum'}, {k:'name', l:'Naam'}, {k:'duration', l:'Moving Time'}, {k:'elevation', l:'HM'}, 
                                 {k:'speed', l:'Snelh.', c:'text-cyan-400'}, {k:'hr', l:'HR', c:'text-red-400'}, {k:'cadence', l:'Cad', c:'text-purple-400'}, 
                                 {k:'power', l:'Watt', c:'text-green-400'}, {k:'p5', l:'5m', c:'text-yellow-400'}, {k:'p20', l:'20m', c:'text-orange-400'}, 
                                 {k:'p60', l:'60m', c:'text-red-500'}
@@ -1234,13 +1390,17 @@ export default function ClimbPerformanceLab() {
        <AnimatePresence>
           {notification && <motion.div initial={{y:-50, opacity:0}} animate={{y:0, opacity:1}} exit={{opacity:0}} className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-2 rounded-full font-bold shadow-2xl flex items-center gap-2"><Check size={16}/> {notification.msg}</motion.div>}
        </AnimatePresence>
+       
+       {showSettings && <SettingsModal />}
+
        <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur border-b border-slate-800">
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v24</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v27</span></h1>
              </div>
              <div className="flex items-center gap-4">
+                <button onClick={() => setShowSettings(true)} className="text-slate-400 hover:text-white transition"><Settings size={20}/></button>
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
                     {syncStatus === 'syncing' ? <RefreshCw className="animate-spin" size={14}/> : <Save size={14}/>}
                     {syncStatus === 'syncing' ? 'Opslaan...' : 'Sync Cloud'}
