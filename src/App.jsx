@@ -105,10 +105,10 @@ const parseDate = (dateStr) => {
     return new Date(dateStr);
 };
 
-// --- DATABASE (FULL RESTORED) ---
+// --- MASSIVE DATABASE (COMPLETE) ---
 
 const ZWIFT_CLIMBS = [
-  // Watopia
+  // --- Watopia ---
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
   { id: 'z_epic_kom', name: "Epic KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 9.4, elevation: 540, avgGrade: 5.9 },
   { id: 'z_epic_rev', name: "Epic KOM Reverse", region: "Watopia", country: "Zwift", flag: "🟧", distance: 6.2, elevation: 337, avgGrade: 5.9 },
@@ -116,38 +116,30 @@ const ZWIFT_CLIMBS = [
   { id: 'z_volcano', name: "Volcano KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 3.7, elevation: 125, avgGrade: 3.2 },
   { id: 'z_hilly', name: "Hilly KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 0.9, elevation: 50, avgGrade: 5.5 },
   { id: 'z_titans', name: "Titans Grove KOM", region: "Watopia", country: "Zwift", flag: "🟧", distance: 2.6, elevation: 119, avgGrade: 4.6 },
-  
-  // France
+  // --- France ---
   { id: 'z_ven_top', name: "Ven-Top", region: "France", country: "Zwift", flag: "🟧", distance: 19.0, elevation: 1534, avgGrade: 8.0 },
   { id: 'z_petit', name: "Petit KOM", region: "France", country: "Zwift", flag: "🟧", distance: 2.7, elevation: 110, avgGrade: 4.0 },
-  
-  // Innsbruck
+  // --- Innsbruck ---
   { id: 'z_innsbruck', name: "Innsbruck KOM", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 7.4, elevation: 400, avgGrade: 5.4 },
   { id: 'z_igls', name: "Igls (Reverse)", region: "Innsbruck", country: "Zwift", flag: "🟧", distance: 5.6, elevation: 230, avgGrade: 4.1 },
-  
-  // London
+  // --- London ---
   { id: 'z_leith', name: "Leith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 134, avgGrade: 6.8 },
   { id: 'z_keith', name: "Keith Hill", region: "London", country: "Zwift", flag: "🟧", distance: 4.2, elevation: 228, avgGrade: 5.2 },
   { id: 'z_box', name: "Box Hill", region: "London", country: "Zwift", flag: "🟧", distance: 3.0, elevation: 137, avgGrade: 4.3 },
-  
-  // Yorkshire
+  // --- Yorkshire ---
   { id: 'z_yorkshire', name: "Yorkshire KOM", region: "Yorkshire", country: "Zwift", flag: "🟧", distance: 1.2, elevation: 55, avgGrade: 4.6 },
-  
-  // Makuri
+  // --- Makuri ---
   { id: 'z_temple', name: "Temple KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 2.5, elevation: 99, avgGrade: 3.9 },
   { id: 'z_rooftop', name: "Rooftop KOM", region: "Makuri", country: "Zwift", flag: "🟧", distance: 1.9, elevation: 54, avgGrade: 2.7 },
-  
-  // Scotland
+  // --- Scotland ---
   { id: 'z_sgurr', name: "Sgurr Summit South", region: "Scotland", country: "Zwift", flag: "🟧", distance: 1.0, elevation: 33, avgGrade: 3.3 },
-  
-  // New York
+  // --- New York ---
   { id: 'z_nyc', name: "NYC KOM", region: "New York", country: "Zwift", flag: "🟧", distance: 1.4, elevation: 89, avgGrade: 6.4 },
-  
-  // Bologna
+  // --- Bologna ---
   { id: 'z_bologna', name: "Bologna TT", region: "Italy", country: "Zwift", flag: "🟧", distance: 2.1, elevation: 200, avgGrade: 9.6 },
 
-  // --- CLIMB PORTAL ROTATIONS ---
-  { id: 'zp_bealach', name: "Bealach na Bà", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.3, elevation: 632, avgGrade: 6.8 },
+  // --- CLIMB PORTAL ROTATIONS (FULL COMPLETE LIST) ---
+  { id: 'zp_bealach', name: "Bealach na Bà", region: "Portal", country: "Zwift", flag: "🌀", distance: 9.0, elevation: 632, avgGrade: 7.0 },
   { id: 'zp_cauberg', name: "Cauberg", region: "Portal", country: "Zwift", flag: "🌀", distance: 0.8, elevation: 57, avgGrade: 7.1 },
   { id: 'zp_cheddar', name: "Cheddar Gorge", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.7, elevation: 171, avgGrade: 3.6 },
   { id: 'zp_cipressa', name: "Cipressa", region: "Portal", country: "Zwift", flag: "🌀", distance: 6.4, elevation: 228, avgGrade: 3.5 },
@@ -165,7 +157,7 @@ const ZWIFT_CLIMBS = [
   { id: 'zp_ordino', name: "Coll d'Ordino", region: "Portal", country: "Zwift", flag: "🌀", distance: 10.3, elevation: 511, avgGrade: 5.0 },
   { id: 'zp_domancy', name: "Cote de Domancy", region: "Portal", country: "Zwift", flag: "🌀", distance: 3.0, elevation: 240, avgGrade: 7.9 },
   { id: 'zp_redoute', name: "Côte de La Redoute", region: "Portal", country: "Zwift", flag: "🌀", distance: 1.5, elevation: 153, avgGrade: 10.2 },
-  { id: 'zp_cote_pike', name: "Côte de Pike", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.2, elevation: 215, avgGrade: 9.0 },
+  { id: 'zp_cote_pike', name: "Cote de Pike", region: "Portal", country: "Zwift", flag: "🌀", distance: 2.2, elevation: 215, avgGrade: 9.0 },
   { id: 'zp_trebiac', name: "Cote de Trebiac", region: "Portal", country: "Zwift", flag: "🌀", distance: 4.6, elevation: 207, avgGrade: 4.2 },
   { id: 'zp_forche', name: "Côte des Forche", region: "Portal", country: "Zwift", flag: "🌀", distance: 3.0, elevation: 148, avgGrade: 4.9 },
   { id: 'zp_crow', name: "Crow Road", region: "Portal", country: "Zwift", flag: "🌀", distance: 7.0, elevation: 251, avgGrade: 3.6 },
@@ -195,14 +187,14 @@ const ZWIFT_CLIMBS = [
 
 const BENELUX_CLIMBS = [
   // NEDERLAND
-  { id: 'nl_camerig', name: "Camerig", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
-  { id: 'nl_vaals', name: "Vaalserberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
-  { id: 'nl_keuten', name: "Keutenberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 68, avgGrade: 5.9 },
-  { id: 'nl_cauberg', name: "Cauberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 0.8, elevation: 48, avgGrade: 6.5 },
-  { id: 'nl_eyser', name: "Eyserbosweg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 1.1, elevation: 90, avgGrade: 8.1 },
-  { id: 'nl_gulper', name: "Gulperberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 0.6, elevation: 55, avgGrade: 9.8 },
-  { id: 'nl_loor', name: "Loorberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 1.5, elevation: 80, avgGrade: 5.3 },
-  { id: 'nl_from', name: "Fromberg", region: "Limburg", country: "NL", flag: "🇳🇱", distance: 1.6, elevation: 65, avgGrade: 4.0 },
+  { id: 'nl_camerig', name: "Camerig", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 4.6, elevation: 175, avgGrade: 3.8 },
+  { id: 'nl_vaals', name: "Vaalserberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 2.6, elevation: 110, avgGrade: 4.2 },
+  { id: 'nl_keuten', name: "Keutenberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 68, avgGrade: 5.9 },
+  { id: 'nl_cauberg', name: "Cauberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.8, elevation: 48, avgGrade: 6.5 },
+  { id: 'nl_eyser', name: "Eyserbosweg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.1, elevation: 90, avgGrade: 8.1 },
+  { id: 'nl_gulper', name: "Gulperberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 0.6, elevation: 55, avgGrade: 9.8 },
+  { id: 'nl_loor', name: "Loorberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.5, elevation: 80, avgGrade: 5.3 },
+  { id: 'nl_from', name: "Fromberg", region: "Zuid-Limburg", country: "NL", flag: "🇳🇱", distance: 1.6, elevation: 65, avgGrade: 4.0 },
   { id: 'nl_posbank', name: "Posbank", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 2.2, elevation: 85, avgGrade: 3.9 },
   { id: 'nl_amerong', name: "Amerongse Berg", region: "Utrecht", country: "NL", flag: "🇳🇱", distance: 1.8, elevation: 65, avgGrade: 3.6 },
   { id: 'nl_italia', name: "Italiaanseweg", region: "Veluwe", country: "NL", flag: "🇳🇱", distance: 1.2, elevation: 55, avgGrade: 4.5 },
@@ -944,7 +936,7 @@ export default function ClimbPerformanceLab() {
         reader.readAsText(file);
     };
 
-    // --- INTERVALS.ICU LOGIC (Improved V21 - Fix visibility) ---
+    // --- INTERVALS.ICU LOGIC (Improved V24 - Fix visibility) ---
     const [icuId, setIcuId] = useState('');
     const [icuKey, setIcuKey] = useState('');
     const [icuLoading, setIcuLoading] = useState(false);
@@ -997,8 +989,11 @@ export default function ClimbPerformanceLab() {
                 notify("Geen ritten gevonden met deze filters", "error");
             } else {
                 notify(`${mapped.length} ritten gevonden. Selecteer en bevestig hieronder.`);
-                // Scroll to preview table
-                setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
+                // Force Scroll & Update State
+                setTimeout(() => {
+                    setParsedData([...mapped]); // Force re-render
+                    previewRef.current?.scrollIntoView({ behavior: 'smooth' });
+                }, 100);
             }
 
         } catch (error) {
@@ -1243,7 +1238,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v23</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v24</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
