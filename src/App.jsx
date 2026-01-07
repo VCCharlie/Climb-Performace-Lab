@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- JOUW FIREBASE CONFIGURATIE ---
+// --- FIREBASE CONFIGURATIE ---
 const firebaseConfig = {
   apiKey: "AIzaSyBNWzcEXhzra-iCkHiZj_FdYUf0NcKvHAk",
   authDomain: "climb-performance-lab.firebaseapp.com",
@@ -57,6 +57,7 @@ const calculateWattsForSpeed = (gradient, weight) => {
 };
 
 const generateNaturalProfile = (distanceKm, elevationM) => {
+  if (!distanceKm || distanceKm <= 0) return []; // Crash prevention
   const segments = 30; 
   const avgGrade = (elevationM / (distanceKm * 1000)) * 100;
   const distPerSeg = distanceKm / segments;
@@ -81,27 +82,26 @@ const generateNaturalProfile = (distanceKm, elevationM) => {
     });
   }
 
-  const finalElev = profile[profile.length - 1].elevation;
-  const scale = elevationM / finalElev;
-  
-  return profile.map(p => ({
-      ...p,
-      elevation: Math.round(p.elevation * scale),
-      gradient: parseFloat((p.gradient * scale).toFixed(1))
-  }));
+  // Normalize final elevation
+  if(profile.length > 0 && elevationM > 0) {
+      const finalElev = profile[profile.length - 1].elevation;
+      const scale = finalElev > 0 ? elevationM / finalElev : 1;
+      return profile.map(p => ({
+          ...p,
+          elevation: Math.round(p.elevation * scale),
+          gradient: parseFloat((p.gradient * scale).toFixed(1))
+      }));
+  }
+  return profile;
 };
 
 const parseDate = (dateStr) => {
     if(!dateStr) return new Date(0);
-    if (dateStr.includes('T')) {
-        return new Date(dateStr);
-    }
+    if (dateStr.includes('T')) return new Date(dateStr);
     const cleanStr = dateStr.split(' ')[0];
     const parts = cleanStr.split(/[\/\-]/);
     if (parts.length === 3) {
-        if (parts[2].length === 4) {
-            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
-        }
+        if (parts[2].length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
     }
     return new Date(dateStr);
 };
@@ -129,7 +129,6 @@ const REAL_WORLD_CLIMBS = [
   { id: 'ventoux', name: "Mont Ventoux", region: "Provence", country: "FR", flag: "🇫🇷", distance: 21.0, elevation: 1610, avgGrade: 7.5 },
   { id: 'stelvio', name: "Passo dello Stelvio", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 24.3, elevation: 1808, avgGrade: 7.4 },
   { id: 'galibier', name: "Col du Galibier", region: "Alpen", country: "FR", flag: "🇫🇷", distance: 18.1, elevation: 1245, avgGrade: 6.9 },
-  { id: 'mortirolo', name: "Mortirolo", region: "Dolomieten", country: "IT", flag: "🇮🇹", distance: 12.4, elevation: 1300, avgGrade: 10.5 },
 ];
 
 const FULL_CLIMB_DB = [
@@ -177,7 +176,7 @@ export default function ClimbPerformanceLab() {
                 }
             }
         } catch (e) {
-            console.warn("Cloud load failed, using local", e);
+            console.warn("Cloud load failed", e);
         }
 
         const savedProfile = localStorage.getItem('cpl_profile');
@@ -240,6 +239,7 @@ export default function ClimbPerformanceLab() {
 
   // --- HELPERS ---
   const activeProfile = useMemo(() => {
+    if (!activeClimb) return [];
     return activeClimb.profile || generateNaturalProfile(activeClimb.distance, activeClimb.elevation);
   }, [activeClimb]);
 
@@ -275,13 +275,15 @@ export default function ClimbPerformanceLab() {
 
   const DashboardComponent = () => {
     const [targetTime, setTargetTime] = useState(60); 
-    const reqSpeed = activeClimb.distance / (targetTime / 60);
-    const reqWatts = calculateWattsForSpeed(activeClimb.avgGrade, userProfile.weight)(reqSpeed);
+    const reqSpeed = (activeClimb?.distance || 10) / (targetTime / 60);
+    const reqWatts = calculateWattsForSpeed(activeClimb?.avgGrade || 5, userProfile.weight)(reqSpeed);
     const gap = reqWatts - userProfile.ftp;
     const [bestPowerTab, setBestPowerTab] = useState('p20');
 
+    if(!activeClimb) return <div>Laden...</div>;
+
     return (
-      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
         <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg flex items-start gap-3">
             <Globe className="text-blue-500 shrink-0 mt-0.5" size={16}/>
             <div className="text-xs text-blue-200">
@@ -451,8 +453,13 @@ export default function ClimbPerformanceLab() {
     const [isCreating, setIsCreating] = useState(false);
     const [newClimb, setNewClimb] = useState({ name: '', distance: '', elevation: '', country: 'FR', flag: '🇫🇷' });
 
-    const filteredClimbs = climbs.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Crash prevention: check if climbs exists
+    const safeClimbs = climbs || [];
+    const filteredClimbs = safeClimbs.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
+    // Crash prevention: handle null activeClimb
+    if (!activeClimb && safeClimbs.length > 0) setActiveClimb(safeClimbs[0]);
+
     const handleCreate = () => {
        if(!newClimb.name || !newClimb.distance || !newClimb.elevation) return;
        const dist = parseFloat(newClimb.distance);
@@ -477,11 +484,12 @@ export default function ClimbPerformanceLab() {
 
     const deleteClimb = (id) => {
         setClimbs(prev => prev.filter(c => c.id !== id));
-        if(activeClimb.id === id) setActiveClimb(climbs[0]);
+        // Reset active climb if deleted
+        if(activeClimb && activeClimb.id === id) setActiveClimb(safeClimbs[0] || null);
     };
 
     return (
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)] min-h-[600px]">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 h-[calc(100vh-140px)] min-h-[600px] w-full">
          <div className="lg:col-span-4 bg-slate-800 rounded-xl border border-slate-700 flex flex-col overflow-hidden">
             <div className="p-4 bg-slate-900 border-b border-slate-700 space-y-3">
                <div className="flex justify-between items-center">
@@ -527,7 +535,7 @@ export default function ClimbPerformanceLab() {
             
             <div className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
                {filteredClimbs.map(c => (
-                  <div key={c.id} onClick={() => setActiveClimb(c)} className={`p-3 rounded cursor-pointer border transition flex justify-between items-center group ${activeClimb.id === c.id ? 'bg-blue-900/30 border-blue-500' : 'border-transparent hover:bg-slate-700/50'}`}>
+                  <div key={c.id} onClick={() => setActiveClimb(c)} className={`p-3 rounded cursor-pointer border transition flex justify-between items-center group ${activeClimb?.id === c.id ? 'bg-blue-900/30 border-blue-500' : 'border-transparent hover:bg-slate-700/50'}`}>
                      <div className="flex-1">
                         <div className="text-sm font-bold text-white flex items-center gap-2">
                            <span className="text-base">{c.flag}</span> {c.name}
@@ -550,82 +558,44 @@ export default function ClimbPerformanceLab() {
             </div>
          </div>
 
-         <div className="lg:col-span-8 flex flex-col gap-6 overflow-y-auto">
-            <div className="bg-slate-800 p-5 rounded-xl border border-slate-700 min-h-[300px] flex flex-col shadow-lg">
-               <div className="flex justify-between mb-4">
-                  <h2 className="text-xl font-bold text-white flex items-center gap-2">{activeClimb.flag} {activeClimb.name}</h2>
-                  <div className="flex bg-slate-900 rounded p-1">
-                     <button onClick={() => setViewMode('2d')} className={`px-3 py-1 text-xs rounded ${viewMode==='2d' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>Map</button>
-                     <button onClick={() => setViewMode('3d')} className={`px-3 py-1 text-xs rounded ${viewMode==='3d' ? 'bg-blue-600 text-white' : 'text-slate-400'}`}>Profiel</button>
-                  </div>
-               </div>
-               
-               <div className="flex-1 bg-slate-900/50 rounded border border-slate-800 relative overflow-hidden flex items-center justify-center p-4">
-                  {viewMode === '3d' ? (
-                     <ResponsiveContainer width="100%" height="100%">
+         <div className="lg:col-span-8 bg-slate-800 rounded-xl border border-slate-700 p-4 flex flex-col">
+            {activeClimb ? (
+            <>
+                <h2 className="text-xl font-bold text-white mb-4">{activeClimb.name}</h2>
+                <div className="flex-1 bg-slate-900/50 rounded relative overflow-hidden">
+                    <ResponsiveContainer width="100%" height="100%">
                         <AreaChart data={activeProfile}>
-                           <defs>
-                              <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#818cf8" stopOpacity={0.8}/>
-                                <stop offset="95%" stopColor="#818cf8" stopOpacity={0}/>
-                              </linearGradient>
-                           </defs>
-                           <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
-                           <XAxis dataKey="km" stroke="#94a3b8" unit="km" fontSize={10}/>
-                           <YAxis stroke="#94a3b8" unit="m" domain={['auto', 'auto']} fontSize={10}/>
-                           <RechartsTooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #334155'}}/>
-                           <Area type="monotone" dataKey="elevation" stroke="#818cf8" fill="url(#grad)" strokeWidth={2}/>
+                            <defs><linearGradient id="grad" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#818cf8" stopOpacity={0.8}/><stop offset="95%" stopColor="#818cf8" stopOpacity={0}/></linearGradient></defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#334155" opacity={0.5} />
+                            <XAxis dataKey="km" stroke="#94a3b8" unit="km" fontSize={10}/>
+                            <YAxis stroke="#94a3b8" unit="m" domain={['auto', 'auto']} fontSize={10}/>
+                            <RechartsTooltip contentStyle={{backgroundColor: '#0f172a', border: '1px solid #334155'}}/>
+                            <Area type="monotone" dataKey="elevation" stroke="#818cf8" fill="url(#grad)" strokeWidth={2}/>
                         </AreaChart>
-                     </ResponsiveContainer>
-                  ) : (
-                     <div className="text-center text-slate-500">
-                        <Map size={48} className="mx-auto mb-2 opacity-50"/>
-                        <p>2D Map Integratie (Google Maps API Placeholder)</p>
-                        <p className="text-xs mt-2">{activeClimb.country} - {activeClimb.region}</p>
-                     </div>
-                  )}
-               </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl border border-slate-700 flex-1 overflow-hidden shadow-lg">
-               <div className="p-3 bg-slate-900 border-b border-slate-700 flex justify-between items-center">
-                  <h3 className="font-bold text-white text-sm">Koersplan (Sectie Analyse)</h3>
-                  <span className="text-xs text-slate-500">Gegenereerd o.b.v. profiel</span>
-               </div>
-               <div className="overflow-x-auto max-h-[400px]">
-                  <table className="w-full text-xs text-left">
-                     <thead className="bg-slate-900 text-slate-400 sticky top-0 z-10 shadow">
-                        <tr>
-                           <th className="p-3">Km</th>
-                           <th className="p-3">Stijging</th>
-                           <th className="p-3">Target Watt</th>
-                           <th className="p-3">Cadans</th>
-                           <th className="p-3">Weer</th>
-                           <th className="p-3">Focus</th>
-                        </tr>
-                     </thead>
-                     <tbody className="divide-y divide-slate-700">
-                        {activeProfile.map((seg, i) => {
-                           const isSteep = seg.gradient > 9;
-                           const isFlat = seg.gradient < 4;
-                           const targetW = Math.round(userProfile.ftp * (isSteep ? 1.05 : isFlat ? 0.85 : 0.95));
-                           const wind = (i % 3 === 0) ? 'Tegen' : 'Mee';
-
-                           return (
-                              <tr key={i} className="hover:bg-slate-700/30">
-                                 <td className="p-3 font-mono text-slate-300">{seg.km.toFixed(1)}</td>
-                                 <td className="p-3"><span className={`px-1.5 py-0.5 rounded font-bold ${isSteep ? 'bg-red-500/20 text-red-400' : isFlat ? 'bg-green-500/20 text-green-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{seg.gradient.toFixed(1)}%</span></td>
-                                 <td className="p-3 font-bold text-white">{targetW}w</td>
-                                 <td className="p-3 text-slate-400">{isSteep ? '70-75' : isFlat ? '90-100' : '80-90'}</td>
-                                 <td className="p-3 flex items-center gap-1 text-slate-400"><Wind size={10}/> {wind}</td>
-                                 <td className="p-3 italic text-slate-500">{isSteep ? 'Power & Torque' : isFlat ? 'Aero & Speed' : 'Rhythm'}</td>
-                              </tr>
-                           )
-                        })}
-                     </tbody>
-                  </table>
-               </div>
-            </div>
+                    </ResponsiveContainer>
+                </div>
+                
+                {/* Koersplan Table embedded */}
+                <div className="mt-4 h-48 overflow-y-auto border border-slate-700 rounded">
+                    <table className="w-full text-xs text-left">
+                        <thead className="bg-slate-900 sticky top-0"><tr><th className="p-2">Km</th><th className="p-2">Grade</th><th className="p-2">Watt</th><th className="p-2">Cadans</th><th className="p-2">Focus</th></tr></thead>
+                        <tbody>
+                            {activeProfile.map((s,i) => (
+                                <tr key={i} className="border-b border-slate-700/50">
+                                    <td className="p-2 text-slate-300">{s.km.toFixed(1)}</td>
+                                    <td className="p-2 font-bold text-white">{s.gradient.toFixed(1)}%</td>
+                                    <td className="p-2 text-green-400">{Math.round(userProfile.ftp * (s.gradient > 9 ? 1.05 : 0.95))}w</td>
+                                    <td className="p-2 text-slate-400">{s.gradient > 8 ? '70-80' : '90+'}</td>
+                                    <td className="p-2 text-slate-500 italic">{s.gradient > 8 ? 'Power' : 'Aero'}</td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            </>
+            ) : (
+                <div className="flex h-full items-center justify-center text-slate-500">Selecteer een klim uit de database</div>
+            )}
          </div>
       </div>
     );
@@ -664,8 +634,8 @@ export default function ClimbPerformanceLab() {
     };
 
     return (
-       <div className="max-w-4xl mx-auto space-y-6">
-          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center shadow-lg">
+       <div className="w-full grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 text-center shadow-lg h-fit">
              <Brain size={48} className="mx-auto text-purple-400 mb-4"/>
              <h2 className="text-2xl font-bold text-white mb-2">AI Performance Coach</h2>
              <p className="text-slate-400 mb-6">Context-aware training advies voor <span className="text-white font-bold">{activeClimb.name}</span>.</p>
@@ -678,27 +648,30 @@ export default function ClimbPerformanceLab() {
                 </button>
              </div>
           </div>
-          <AnimatePresence>
-             {response && (
-                <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl">
-                   <div className="flex justify-between items-start border-b border-slate-800 pb-4 mb-4">
-                      <h3 className="text-lg font-bold text-white flex items-center gap-2"><Brain size={18} className="text-purple-400"/> {response.title}</h3>
-                      <button onClick={() => setResponse(null)} className="text-slate-500 hover:text-white"><X size={18}/></button>
-                   </div>
-                   <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg mb-4">
-                      <p className="text-purple-200 font-medium italic">"{response.core}"</p>
-                   </div>
-                   <div className="space-y-2">
-                      {response.blocks.map((b, i) => (
-                         <div key={i} className="flex gap-4 p-3 bg-slate-800 rounded border border-slate-700/50">
-                            <span className="font-mono text-blue-400 w-24 shrink-0 text-sm font-bold">{b.t}</span>
-                            <span className="text-slate-300 text-sm">{b.d}</span>
-                         </div>
-                      ))}
-                   </div>
-                </motion.div>
-             )}
-          </AnimatePresence>
+          
+          <div>
+            <AnimatePresence>
+                {response && (
+                    <motion.div initial={{opacity:0, y:20}} animate={{opacity:1, y:0}} className="bg-slate-900 border border-slate-700 rounded-xl p-6 shadow-xl h-full">
+                    <div className="flex justify-between items-start border-b border-slate-800 pb-4 mb-4">
+                        <h3 className="text-lg font-bold text-white flex items-center gap-2"><Brain size={18} className="text-purple-400"/> {response.title}</h3>
+                        <button onClick={() => setResponse(null)} className="text-slate-500 hover:text-white"><X size={18}/></button>
+                    </div>
+                    <div className="bg-purple-500/10 border border-purple-500/30 p-4 rounded-lg mb-4">
+                        <p className="text-purple-200 font-medium italic">"{response.core}"</p>
+                    </div>
+                    <div className="space-y-2">
+                        {response.blocks.map((b, i) => (
+                            <div key={i} className="flex gap-4 p-3 bg-slate-800 rounded border border-slate-700/50">
+                                <span className="font-mono text-blue-400 w-24 shrink-0 text-sm font-bold">{b.t}</span>
+                                <span className="text-slate-300 text-sm">{b.d}</span>
+                            </div>
+                        ))}
+                    </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+          </div>
        </div>
     );
   };
@@ -710,7 +683,7 @@ export default function ClimbPerformanceLab() {
     const fluid = Math.round((500 + userProfile.weight * 5) * (duration/60));
 
     return (
-       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-5xl mx-auto items-center">
+       <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 shadow-lg">
              <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-2"><Droplet className="text-cyan-400"/> Fueling Calculator</h3>
              <div className="space-y-6">
@@ -734,9 +707,9 @@ export default function ClimbPerformanceLab() {
                 </div>
              </div>
           </div>
-          <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700">
+          <div className="bg-slate-800 p-6 rounded-2xl border border-slate-700 h-fit">
              <h4 className="text-white font-bold mb-2">AI Nutrition Tip</h4>
-             <p className="text-slate-400 italic text-sm">"Bij {intensity*100}% intensiteit werkt je maag langzamer. Gebruik isotone gels en vermijd vaste voeding na het eerste uur. Start met 500ml vocht loading 2 uur voor de start."</p>
+             <p className="text-slate-400 italic text-sm leading-relaxed">"Bij {intensity*100}% intensiteit werkt je maag langzamer. Gebruik isotone gels en vermijd vaste voeding na het eerste uur. Start met 500ml vocht loading 2 uur voor de start. Voor ritten langer dan 2 uur, overweeg natrium toevoeging."</p>
           </div>
        </div>
     );
@@ -746,6 +719,7 @@ export default function ClimbPerformanceLab() {
     // --- CSV LOGIC ---
     const [csvText, setCsvText] = useState('');
     const [parsedData, setParsedData] = useState([]);
+    const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const fileInputRef = useRef(null);
 
     const parseCSV = (text) => {
@@ -783,7 +757,7 @@ export default function ClimbPerformanceLab() {
         reader.readAsText(file);
     };
 
-    // --- INTERVALS.ICU LOGIC (Improved V18) ---
+    // --- INTERVALS.ICU LOGIC (Improved V19) ---
     const [icuId, setIcuId] = useState('');
     const [icuKey, setIcuKey] = useState('');
     const [icuLoading, setIcuLoading] = useState(false);
@@ -793,7 +767,7 @@ export default function ClimbPerformanceLab() {
         const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().split('T')[0];
     });
     const [icuEnd, setIcuEnd] = useState(() => new Date().toISOString().split('T')[0]);
-    const [activityTypes, setActivityTypes] = useState({ Ride: true, VirtualRide: true, Run: false, Walk: false, Swim: false });
+    const [activityTypes, setActivityTypes] = useState({ Ride: true, VirtualRide: true, Run: false, Walk: false });
     const [showOnlyNew, setShowOnlyNew] = useState(true);
 
     useEffect(() => {
@@ -836,6 +810,7 @@ export default function ClimbPerformanceLab() {
             } else {
                 setParsedData(mapped);
                 notify(`${mapped.length} ritten gevonden. Selecteer en bevestig hieronder.`);
+                // Smooth scroll to preview? (Optional, user can see it now)
             }
 
         } catch (error) {
@@ -849,7 +824,6 @@ export default function ClimbPerformanceLab() {
     const commitImport = () => {
         const toAdd = parsedData.filter(d => d.selected);
         setActivities(prev => {
-             // Extra safety check against duplicates just in case
              const safeAdd = toAdd.filter(newA => !prev.some(existingA => existingA.date === newA.date && existingA.name === newA.name));
              return [...prev, ...safeAdd];
         });
@@ -862,8 +836,8 @@ export default function ClimbPerformanceLab() {
     const toggleAll = (state) => setParsedData(parsedData.map(p => ({...p, selected: state})));
 
     return (
-       <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+       <div className="space-y-6 w-full">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
               {/* CSV BLOCK */}
               <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
                  <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Upload size={18}/> CSV Import</h3></div>
@@ -884,10 +858,10 @@ export default function ClimbPerformanceLab() {
                  <div className="space-y-3">
                     <div className="flex gap-2">
                          <input className="w-1/2 bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="Athlete ID" value={icuId} onChange={e => setIcuId(e.target.value)}/>
-                         <input type="password" class="w-1/2 bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="API Key" value={icuKey} onChange={e => setIcuKey(e.target.value)}/>
+                         <input type="password" className="w-1/2 bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="API Key" value={icuKey} onChange={e => setIcuKey(e.target.value)}/>
                     </div>
                     
-                    {/* DATE RANGE & FILTERS */}
+                    {/* DATE RANGE */}
                     <div className="flex gap-2 items-end">
                         <div className="flex-1">
                             <label className="text-[10px] text-slate-500 block mb-1">Van</label>
@@ -928,7 +902,7 @@ export default function ClimbPerformanceLab() {
           {/* PREVIEW & IMPORT AREA */}
           <AnimatePresence>
             {parsedData.length > 0 && (
-                <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30">
+                <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30 w-full">
                     <div className="flex justify-between items-center mb-3">
                         <h4 className="text-green-400 font-bold text-sm">Preview: {parsedData.length} ritten gevonden</h4>
                          <div className="flex gap-2">
@@ -939,13 +913,13 @@ export default function ClimbPerformanceLab() {
                             </button>
                         </div>
                     </div>
-                    <div className="overflow-x-auto border border-slate-700 rounded max-h-60">
+                    <div className="overflow-x-auto border border-slate-700 rounded max-h-96">
                         <table className="w-full text-xs text-left text-slate-300">
                             <thead className="bg-slate-900 uppercase sticky top-0"><tr><th className="p-2">Sel</th><th className="p-2">Datum</th><th className="p-2">Naam</th><th className="p-2">Bron</th><th className="p-2">Watt</th><th className="p-2">5m</th><th className="p-2">20m</th><th className="p-2">60m</th></tr></thead>
                             <tbody>{parsedData.map((d,i) => (
                                 <tr key={i} className="border-b border-slate-700/50 hover:bg-slate-700/30">
                                     <td className="p-2"><input type="checkbox" checked={d.selected} onChange={() => setParsedData(parsedData.map(p => p.id === d.id ? {...p, selected: !p.selected} : p))}/></td>
-                                    <td className="p-2">{d.date}</td><td className="p-2 max-w-[150px] truncate">{d.name}</td><td className="p-2">{d.source}</td><td className="p-2">{d.power}</td><td className="p-2">{d.p5}</td><td className="p-2">{d.p20}</td><td className="p-2">{d.p60}</td>
+                                    <td className="p-2">{d.date}</td><td className="p-2 max-w-[150px] truncate" title={d.name}>{d.name}</td><td className="p-2">{d.source}</td><td className="p-2">{d.power}</td><td className="p-2">{d.p5}</td><td className="p-2">{d.p20}</td><td className="p-2">{d.p60}</td>
                                 </tr>
                             ))}</tbody>
                         </table>
@@ -955,7 +929,7 @@ export default function ClimbPerformanceLab() {
           </AnimatePresence>
 
           {/* LOGBOOK TABLE */}
-          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
+          <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full">
              <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Database size={18}/> Logboek</h3>
              <div className="overflow-x-auto">
                  <table className="w-full text-xs text-left min-w-[800px]">
@@ -982,7 +956,21 @@ export default function ClimbPerformanceLab() {
                                  <td className="p-3 text-orange-400 font-bold">{a.p20 || '-'}</td>
                                  <td className="p-3 text-red-400">{a.p60 || '-'}</td>
                                  <td className="p-3 text-right">
-                                     <button onClick={() => setActivities(prev => prev.filter(x => x.id !== a.id))} className="text-slate-600 hover:text-red-500"><Trash2 size={14}/></button>
+                                     <button 
+                                        onClick={() => {
+                                            if (deleteConfirmId === a.id) {
+                                                setActivities(prev => prev.filter(x => x.id !== a.id));
+                                                setDeleteConfirmId(null);
+                                            } else {
+                                                setDeleteConfirmId(a.id);
+                                                // Reset confirmation after 3 seconds
+                                                setTimeout(() => setDeleteConfirmId(null), 3000);
+                                            }
+                                        }} 
+                                        className={`${deleteConfirmId === a.id ? 'text-red-500 bg-red-900/30' : 'text-slate-600 hover:text-red-500'} p-1 rounded transition`}
+                                     >
+                                        {deleteConfirmId === a.id ? <HelpCircle size={14}/> : <Trash2 size={14}/>}
+                                     </button>
                                  </td>
                              </tr>
                          ))}
@@ -1005,7 +993,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v18</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v19</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
