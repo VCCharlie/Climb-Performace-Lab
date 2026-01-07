@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings, HelpCircle
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -12,7 +12,7 @@ import {
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 
-// --- FIREBASE CONFIGURATIE ---
+// --- JOUW FIREBASE CONFIGURATIE ---
 const firebaseConfig = {
   apiKey: "AIzaSyBNWzcEXhzra-iCkHiZj_FdYUf0NcKvHAk",
   authDomain: "climb-performance-lab.firebaseapp.com",
@@ -57,7 +57,6 @@ const calculateWattsForSpeed = (gradient, weight) => {
 };
 
 const generateNaturalProfile = (distanceKm, elevationM) => {
-  if (!distanceKm || distanceKm <= 0) return []; 
   const segments = 30; 
   const avgGrade = (elevationM / (distanceKm * 1000)) * 100;
   const distPerSeg = distanceKm / segments;
@@ -82,25 +81,27 @@ const generateNaturalProfile = (distanceKm, elevationM) => {
     });
   }
 
-  if(profile.length > 0 && elevationM > 0) {
-      const finalElev = profile[profile.length - 1].elevation;
-      const scale = finalElev > 0 ? elevationM / finalElev : 1;
-      return profile.map(p => ({
-          ...p,
-          elevation: Math.round(p.elevation * scale),
-          gradient: parseFloat((p.gradient * scale).toFixed(1))
-      }));
-  }
-  return profile;
+  const finalElev = profile[profile.length - 1].elevation;
+  const scale = elevationM / finalElev;
+  
+  return profile.map(p => ({
+      ...p,
+      elevation: Math.round(p.elevation * scale),
+      gradient: parseFloat((p.gradient * scale).toFixed(1))
+  }));
 };
 
 const parseDate = (dateStr) => {
     if(!dateStr) return new Date(0);
-    if (dateStr.includes('T')) return new Date(dateStr);
+    if (dateStr.includes('T')) {
+        return new Date(dateStr);
+    }
     const cleanStr = dateStr.split(' ')[0];
     const parts = cleanStr.split(/[\/\-]/);
     if (parts.length === 3) {
-        if (parts[2].length === 4) return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        if (parts[2].length === 4) {
+            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+        }
     }
     return new Date(dateStr);
 };
@@ -239,7 +240,6 @@ export default function ClimbPerformanceLab() {
 
   // --- HELPERS ---
   const activeProfile = useMemo(() => {
-    if (!activeClimb) return [];
     return activeClimb.profile || generateNaturalProfile(activeClimb.distance, activeClimb.elevation);
   }, [activeClimb]);
 
@@ -275,12 +275,10 @@ export default function ClimbPerformanceLab() {
 
   const DashboardComponent = () => {
     const [targetTime, setTargetTime] = useState(60); 
-    const reqSpeed = (activeClimb?.distance || 10) / (targetTime / 60);
-    const reqWatts = calculateWattsForSpeed(activeClimb?.avgGrade || 5, userProfile.weight)(reqSpeed);
+    const reqSpeed = activeClimb.distance / (targetTime / 60);
+    const reqWatts = calculateWattsForSpeed(activeClimb.avgGrade, userProfile.weight)(reqSpeed);
     const gap = reqWatts - userProfile.ftp;
     const [bestPowerTab, setBestPowerTab] = useState('p20');
-
-    if(!activeClimb) return <div>Laden...</div>;
 
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 w-full">
@@ -449,41 +447,12 @@ export default function ClimbPerformanceLab() {
   };
 
   const ClimbManagerComponent = () => {
-    // State for filters
-    const [mainFilter, setMainFilter] = useState('All'); 
-    const [countryFilter, setCountryFilter] = useState('All');
-    const [regionFilter, setRegionFilter] = useState('All');
     const [searchTerm, setSearchTerm] = useState('');
-    
     const [isCreating, setIsCreating] = useState(false);
     const [newClimb, setNewClimb] = useState({ name: '', distance: '', elevation: '', country: 'FR', flag: '🇫🇷' });
 
-    // Crash prevention: check if climbs exists
-    const safeClimbs = climbs || [];
+    const filteredClimbs = climbs.filter(c => c.name.toLowerCase().includes(searchTerm.toLowerCase()));
     
-    // Filter Logic
-    const availableCountries = useMemo(() => {
-        const relevant = mainFilter === 'All' ? safeClimbs : safeClimbs.filter(c => c.type === mainFilter);
-        return [...new Set(relevant.map(c => c.country))].sort();
-    }, [mainFilter, safeClimbs]);
-
-    const availableRegions = useMemo(() => {
-        let relevant = mainFilter === 'All' ? safeClimbs : safeClimbs.filter(c => c.type === mainFilter);
-        if(countryFilter !== 'All') relevant = relevant.filter(c => c.country === countryFilter);
-        return [...new Set(relevant.map(c => c.region))].sort();
-    }, [mainFilter, countryFilter, safeClimbs]);
-
-    const filteredClimbs = safeClimbs.filter(c => {
-       const matchMain = mainFilter === 'All' || c.type === mainFilter;
-       const matchCountry = countryFilter === 'All' || c.country === countryFilter;
-       const matchRegion = regionFilter === 'All' || c.region === regionFilter;
-       const matchSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase());
-       return matchMain && matchCountry && matchRegion && matchSearch;
-    });
-
-    // Crash prevention: handle null activeClimb
-    if (!activeClimb && safeClimbs.length > 0) setActiveClimb(safeClimbs[0]);
-
     const handleCreate = () => {
        if(!newClimb.name || !newClimb.distance || !newClimb.elevation) return;
        const dist = parseFloat(newClimb.distance);
@@ -508,8 +477,7 @@ export default function ClimbPerformanceLab() {
 
     const deleteClimb = (id) => {
         setClimbs(prev => prev.filter(c => c.id !== id));
-        // Reset active climb if deleted
-        if(activeClimb && activeClimb.id === id) setActiveClimb(safeClimbs[0] || null);
+        if(activeClimb.id === id) setActiveClimb(climbs[0]);
     };
 
     return (
@@ -549,25 +517,6 @@ export default function ClimbPerformanceLab() {
                   </div>
                ) : (
                  <div className="space-y-2">
-                   {/* Filters restored */}
-                   <div className="flex gap-2">
-                      <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={mainFilter} onChange={e => {setMainFilter(e.target.value); setCountryFilter('All'); setRegionFilter('All');}}>
-                        <option value="All">Alle Types</option>
-                        <option value="Real">Real World</option>
-                        <option value="Zwift">Zwift</option>
-                        <option value="Custom">Custom</option>
-                      </select>
-                      <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={countryFilter} onChange={e => {setCountryFilter(e.target.value); setRegionFilter('All');}}>
-                        <option value="All">Alle Landen</option>
-                        {availableCountries.map(c => <option key={c} value={c}>{c}</option>)}
-                      </select>
-                   </div>
-                   <div className="flex gap-2">
-                        <select className="bg-slate-800 text-xs text-white border border-slate-700 rounded p-2 flex-1 outline-none" value={regionFilter} onChange={e => setRegionFilter(e.target.value)}>
-                            <option value="All">Alle Regio's</option>
-                            {availableRegions.map(r => <option key={r} value={r}>{r}</option>)}
-                        </select>
-                   </div>
                    <div className="relative">
                       <Search className="absolute left-2 top-2 text-slate-500" size={14}/>
                       <input className="w-full bg-slate-800 border border-slate-700 rounded pl-8 p-2 text-xs text-white outline-none" placeholder="Zoek op naam..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)}/>
@@ -764,7 +713,8 @@ export default function ClimbPerformanceLab() {
     const [parsedData, setParsedData] = useState([]);
     const [deleteConfirmId, setDeleteConfirmId] = useState(null);
     const fileInputRef = useRef(null);
-    const previewRef = useRef(null); // Ref to scroll to preview
+    const previewRef = useRef(null);
+    const [sortConfig, setSortConfig] = useState({ key: 'date', direction: 'desc' });
 
     const parseCSV = (text) => {
         const lines = text.trim().split('\n');
@@ -791,7 +741,6 @@ export default function ClimbPerformanceLab() {
             }
         }
         setParsedData(results);
-        // Scroll to preview after a short delay to allow rendering
         setTimeout(() => previewRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
     };
 
@@ -879,7 +828,32 @@ export default function ClimbPerformanceLab() {
         notify(`${toAdd.length} ritten toegevoegd aan logboek!`);
     };
 
-    const sortedActivities = useMemo(() => [...activities].sort((a,b) => parseDate(b.date) - parseDate(a.date)), [activities]);
+    // Sorting Helper
+    const handleSort = (key) => {
+        setSortConfig(current => ({
+            key, direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc'
+        }));
+    };
+
+    const sortedLogbook = useMemo(() => {
+        let sortable = [...activities];
+        if (sortConfig.key) {
+            sortable.sort((a, b) => {
+                let aVal = a[sortConfig.key] || 0;
+                let bVal = b[sortConfig.key] || 0;
+                // Special date handling
+                if(sortConfig.key === 'date') {
+                    aVal = parseDate(a.date).getTime();
+                    bVal = parseDate(b.date).getTime();
+                }
+                if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1;
+                return 0;
+            });
+        }
+        return sortable;
+    }, [activities, sortConfig]);
+
     const toggleAll = (state) => setParsedData(parsedData.map(p => ({...p, selected: state})));
 
     return (
@@ -1002,21 +976,31 @@ export default function ClimbPerformanceLab() {
             </AnimatePresence>
           </div>
 
-          {/* LOGBOOK TABLE */}
+          {/* LOGBOOK TABLE WITH SORTING */}
           <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 w-full">
              <h3 className="text-white font-bold mb-4 flex items-center gap-2"><Database size={18}/> Logboek</h3>
              <div className="overflow-x-auto">
                  <table className="w-full text-xs text-left min-w-[800px]">
-                     <thead className="bg-slate-900 text-slate-400 uppercase">
+                     <thead className="bg-slate-900 text-slate-400 uppercase cursor-pointer">
                          <tr>
-                            <th className="p-3">Datum</th><th className="p-3">Naam</th><th className="p-3">Duur</th><th className="p-3">HM</th>
-                            <th className="p-3 text-cyan-400">Snelh.</th><th className="p-3 text-red-400">HR</th><th className="p-3 text-purple-400">Cad</th>
-                            <th className="p-3 text-green-400">Watt</th><th className="p-3 text-yellow-400">5m</th><th className="p-3 text-orange-400">20m</th><th className="p-3 text-red-500">60m</th>
+                            {[
+                                {k:'date', l:'Datum'}, {k:'name', l:'Naam'}, {k:'duration', l:'Duur'}, {k:'elevation', l:'HM'}, 
+                                {k:'speed', l:'Snelh.', c:'text-cyan-400'}, {k:'hr', l:'HR', c:'text-red-400'}, {k:'cadence', l:'Cad', c:'text-purple-400'}, 
+                                {k:'power', l:'Watt', c:'text-green-400'}, {k:'p5', l:'5m', c:'text-yellow-400'}, {k:'p20', l:'20m', c:'text-orange-400'}, 
+                                {k:'p60', l:'60m', c:'text-red-500'}
+                            ].map(h => (
+                                <th key={h.k} className={`p-3 hover:bg-slate-800 ${h.c || ''}`} onClick={() => handleSort(h.k)}>
+                                    <div className="flex items-center gap-1">
+                                        {h.l}
+                                        {sortConfig.key === h.k && (sortConfig.direction === 'asc' ? <ArrowUp size={10}/> : <ArrowDown size={10}/>)}
+                                    </div>
+                                </th>
+                            ))}
                             <th className="p-3 text-right">Actie</th>
                          </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-700">
-                         {sortedActivities.map(a => (
+                         {sortedLogbook.map(a => (
                              <tr key={a.id} className="hover:bg-slate-700/30">
                                  <td className="p-3 font-mono text-slate-300">{a.date}</td>
                                  <td className="p-3 font-bold text-white max-w-[150px] truncate" title={a.name}>{a.name}</td>
@@ -1037,7 +1021,6 @@ export default function ClimbPerformanceLab() {
                                                 setDeleteConfirmId(null);
                                             } else {
                                                 setDeleteConfirmId(a.id);
-                                                // Reset confirmation after 3 seconds
                                                 setTimeout(() => setDeleteConfirmId(null), 3000);
                                             }
                                         }} 
@@ -1067,7 +1050,7 @@ export default function ClimbPerformanceLab() {
           <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v21</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v22</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
