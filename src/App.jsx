@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
 import { 
   Activity, Map, Zap, Database, Upload, Trash2, 
   ChevronDown, Mountain, TrendingUp, Search, Wind, Brain, Droplet, ArrowRight,
-  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon
+  BarChart2, X, RefreshCw, FileText, Check, AlertTriangle, Filter, Globe, Calendar, Clock, Edit2, Save, Download, Link as LinkIcon, Settings
 } from 'lucide-react';
 import { 
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, 
@@ -13,7 +13,6 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 // --- JOUW FIREBASE CONFIGURATIE ---
-// Zorg dat deze exact overeenkomt met je project instellingen
 const firebaseConfig = {
   apiKey: "AIzaSyBNWzcEXhzra-iCkHiZj_FdYUf0NcKvHAk",
   authDomain: "climb-performance-lab.firebaseapp.com",
@@ -24,14 +23,14 @@ const firebaseConfig = {
   measurementId: "G-G4WLCWCXFK"
 };
 
-// Initialiseer Firebase veilig (voorkomt crashes bij dubbele init)
+// Initialiseer Firebase veilig
 let app;
 let db;
 try {
     app = initializeApp(firebaseConfig);
     db = getFirestore(app);
 } catch (e) {
-    // Firebase is waarschijnlijk al geïnitialiseerd, negeer.
+    // Firebase already initialized
 }
 
 // --- UTILITIES & PHYSICS ---
@@ -101,15 +100,13 @@ const parseDate = (dateStr) => {
     const parts = cleanStr.split(/[\/\-]/);
     if (parts.length === 3) {
         if (parts[2].length === 4) {
-            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`); // DD-MM-YYYY -> YYYY-MM-DD
+            return new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
         }
     }
     return new Date(dateStr);
 };
 
 // --- DATABASE ---
-// TIP: Je kunt hier jouw volledige lijsten van 900 regels overheen plakken.
-// De logica blijft werken zolang de structuur {id, name, ...} hetzelfde is.
 
 const ZWIFT_CLIMBS = [
   { id: 'z_adz', name: "Alpe du Zwift", region: "Watopia", country: "Zwift", flag: "🟧", distance: 12.2, elevation: 1036, avgGrade: 8.5 },
@@ -180,7 +177,7 @@ export default function ClimbPerformanceLab() {
                 }
             }
         } catch (e) {
-            console.warn("Cloud load failed, falling back to local", e);
+            console.warn("Cloud load failed, using local", e);
         }
 
         const savedProfile = localStorage.getItem('cpl_profile');
@@ -223,7 +220,6 @@ export default function ClimbPerformanceLab() {
           notify("Data succesvol opgeslagen in Cloud!");
           setTimeout(() => setSyncStatus('idle'), 2000);
       } catch (e) {
-          console.error(e);
           setSyncStatus('error');
           notify("Cloud opslaan mislukt", "error");
           setTimeout(() => setSyncStatus('idle'), 3000);
@@ -275,7 +271,7 @@ export default function ClimbPerformanceLab() {
         .slice(0, 5);
   };
 
-  // --- SUB-COMPONENTS (DEFINED INSIDE TO SHARE STATE) ---
+  // --- SUB-COMPONENTS ---
 
   const DashboardComponent = () => {
     const [targetTime, setTargetTime] = useState(60); 
@@ -286,11 +282,10 @@ export default function ClimbPerformanceLab() {
 
     return (
       <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-        
         <div className="bg-blue-500/10 border border-blue-500/20 p-3 rounded-lg flex items-start gap-3">
             <Globe className="text-blue-500 shrink-0 mt-0.5" size={16}/>
             <div className="text-xs text-blue-200">
-                <span className="font-bold">Status:</span> Klik rechtsboven op <strong>"Sync Cloud"</strong> om je ritten veilig in Firebase op te slaan en te synchroniseren.
+                <span className="font-bold">Status:</span> Klik rechtsboven op <strong>"Sync Cloud"</strong> om je ritten veilig in Firebase op te slaan.
             </div>
         </div>
 
@@ -748,6 +743,7 @@ export default function ClimbPerformanceLab() {
   };
 
   const DataHubComponent = () => {
+    // --- CSV LOGIC ---
     const [csvText, setCsvText] = useState('');
     const [parsedData, setParsedData] = useState([]);
     const fileInputRef = useRef(null);
@@ -787,11 +783,19 @@ export default function ClimbPerformanceLab() {
         reader.readAsText(file);
     };
 
-    // --- INTERVALS.ICU LOGIC ---
+    // --- INTERVALS.ICU LOGIC (Improved V18) ---
     const [icuId, setIcuId] = useState('');
     const [icuKey, setIcuKey] = useState('');
     const [icuLoading, setIcuLoading] = useState(false);
     
+    // Config: Dates & Types
+    const [icuStart, setIcuStart] = useState(() => {
+        const d = new Date(); d.setDate(d.getDate() - 90); return d.toISOString().split('T')[0];
+    });
+    const [icuEnd, setIcuEnd] = useState(() => new Date().toISOString().split('T')[0]);
+    const [activityTypes, setActivityTypes] = useState({ Ride: true, VirtualRide: true, Run: false, Walk: false, Swim: false });
+    const [showOnlyNew, setShowOnlyNew] = useState(true);
+
     useEffect(() => {
         setIcuId(localStorage.getItem('cpl_icu_id') || '');
         setIcuKey(localStorage.getItem('cpl_icu_key') || '');
@@ -803,46 +807,55 @@ export default function ClimbPerformanceLab() {
         localStorage.setItem('cpl_icu_id', icuId);
         localStorage.setItem('cpl_icu_key', icuKey);
 
-        const endDate = new Date().toISOString().split('T')[0];
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() - 90); 
-        const startStr = startDate.toISOString().split('T')[0];
-
         try {
             const auth = btoa("API_KEY:" + icuKey);
-            const url = `https://intervals.icu/api/v1/athlete/${icuId}/activities?oldest=${startStr}&newest=${endDate}`;
+            const url = `https://intervals.icu/api/v1/athlete/${icuId}/activities?oldest=${icuStart}&newest=${icuEnd}`;
             const response = await fetch(url, { headers: { 'Authorization': `Basic ${auth}` } });
+            
             if (!response.ok) throw new Error("API Fout: " + response.status);
             
             const data = await response.json();
-            const mapped = data.map((act, i) => ({
+            let mapped = data.map((act) => ({
                 id: `icu_${act.id}`,
                 date: act.start_date_local.split('T')[0], name: act.name, duration: act.moving_time,
                 distance: (act.distance / 1000).toFixed(2), elevation: act.total_elevation_gain,
                 speed: (act.average_speed * 3.6).toFixed(1), hr: act.average_heartrate, cadence: act.average_cadence,
-                power: act.average_watts, p5: 0, p20: 0, p60: 0, selected: true, source: 'API'
+                power: act.average_watts, p5: 0, p20: 0, p60: 0, selected: true, source: 'API', type: act.type
             }));
 
-            const newItems = mapped.filter(m => !activities.some(a => a.date === m.date && a.name === m.name));
-            if (newItems.length === 0) {
-                notify("Geen nieuwe ritten gevonden", "error");
-            } else {
-                setParsedData(newItems);
-                notify(`${newItems.length} ritten opgehaald!`);
+            // Filter Types
+            mapped = mapped.filter(item => activityTypes[item.type]);
+
+            // Filter Duplicates (Optional)
+            if(showOnlyNew) {
+                mapped = mapped.filter(m => !activities.some(a => a.date === m.date && a.name === m.name));
             }
+            
+            if (mapped.length === 0) {
+                notify("Geen ritten gevonden met deze filters", "error");
+            } else {
+                setParsedData(mapped);
+                notify(`${mapped.length} ritten gevonden. Selecteer en bevestig hieronder.`);
+            }
+
         } catch (error) {
             console.error(error);
-            notify("Fetch mislukt. Check CORS/API Key.", "error");
+            notify("Fetch mislukt. Check CORS of API Key.", "error");
         } finally {
             setIcuLoading(false);
         }
     };
 
     const commitImport = () => {
-        setActivities(prev => [...prev, ...parsedData.filter(d => d.selected)]);
+        const toAdd = parsedData.filter(d => d.selected);
+        setActivities(prev => {
+             // Extra safety check against duplicates just in case
+             const safeAdd = toAdd.filter(newA => !prev.some(existingA => existingA.date === newA.date && existingA.name === newA.name));
+             return [...prev, ...safeAdd];
+        });
         setParsedData([]);
         setCsvText('');
-        notify(`${parsedData.filter(d => d.selected).length} ritten toegevoegd`);
+        notify(`${toAdd.length} ritten toegevoegd aan logboek!`);
     };
 
     const sortedActivities = useMemo(() => [...activities].sort((a,b) => parseDate(b.date) - parseDate(a.date)), [activities]);
@@ -851,6 +864,7 @@ export default function ClimbPerformanceLab() {
     return (
        <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* CSV BLOCK */}
               <div className="bg-slate-800 p-6 rounded-xl border border-slate-700">
                  <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Upload size={18}/> CSV Import</h3></div>
                  <div className="flex gap-2 mb-3">
@@ -863,21 +877,55 @@ export default function ClimbPerformanceLab() {
                  <button onClick={() => parseCSV(csvText)} className="text-blue-400 text-xs font-bold w-full text-center">Preview CSV</button>
               </div>
 
+              {/* INTERVALS.ICU BLOCK */}
               <div className="bg-slate-800 p-6 rounded-xl border border-slate-700 relative overflow-hidden">
                  <div className="absolute top-0 right-0 p-2 opacity-10"><Globe size={64} className="text-blue-500"/></div>
                  <h3 className="text-white font-bold flex items-center gap-2 mb-4"><LinkIcon size={18}/> Intervals.icu API</h3>
                  <div className="space-y-3">
-                    <input className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="Athlete ID (bijv. i12345)" value={icuId} onChange={e => setIcuId(e.target.value)}/>
-                    <input type="password" className="w-full bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="API Key" value={icuKey} onChange={e => setIcuKey(e.target.value)}/>
-                    <button onClick={fetchIntervalsData} disabled={icuLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition disabled:opacity-50">
+                    <div className="flex gap-2">
+                         <input className="w-1/2 bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="Athlete ID" value={icuId} onChange={e => setIcuId(e.target.value)}/>
+                         <input type="password" class="w-1/2 bg-slate-900 border border-slate-700 p-2 rounded text-xs text-white" placeholder="API Key" value={icuKey} onChange={e => setIcuKey(e.target.value)}/>
+                    </div>
+                    
+                    {/* DATE RANGE & FILTERS */}
+                    <div className="flex gap-2 items-end">
+                        <div className="flex-1">
+                            <label className="text-[10px] text-slate-500 block mb-1">Van</label>
+                            <input type="date" className="w-full bg-slate-900 border border-slate-700 p-1.5 rounded text-xs text-white" value={icuStart} onChange={e => setIcuStart(e.target.value)} />
+                        </div>
+                        <div className="flex-1">
+                            <label className="text-[10px] text-slate-500 block mb-1">Tot</label>
+                            <input type="date" className="w-full bg-slate-900 border border-slate-700 p-1.5 rounded text-xs text-white" value={icuEnd} onChange={e => setIcuEnd(e.target.value)} />
+                        </div>
+                    </div>
+
+                    {/* TYPE FILTERS */}
+                    <div className="flex flex-wrap gap-2 pt-1">
+                         {Object.keys(activityTypes).map(type => (
+                             <button 
+                                key={type} 
+                                onClick={() => setActivityTypes(prev => ({...prev, [type]: !prev[type]}))}
+                                className={`px-2 py-1 rounded text-[10px] border ${activityTypes[type] ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-500'}`}
+                             >
+                                 {type}
+                             </button>
+                         ))}
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-2">
+                        <input type="checkbox" checked={showOnlyNew} onChange={e => setShowOnlyNew(e.target.checked)} className="rounded bg-slate-700 border-slate-600"/>
+                        <span className="text-[10px] text-slate-400">Toon alleen nieuwe activiteiten</span>
+                    </div>
+
+                    <button onClick={fetchIntervalsData} disabled={icuLoading} className="w-full bg-indigo-600 hover:bg-indigo-500 text-white px-4 py-2 rounded text-sm font-bold flex justify-center items-center gap-2 transition disabled:opacity-50 mt-2">
                         {icuLoading ? <RefreshCw className="animate-spin" size={16}/> : <Download size={16}/>}
-                        {icuLoading ? 'Ophalen...' : 'Haal Data Op (90d)'}
+                        {icuLoading ? 'Ophalen...' : 'Haal Data Op'}
                     </button>
-                    <p className="text-[10px] text-slate-500 text-center">Let op: Browser extensie "Allow CORS" kan nodig zijn voor lokale tests.</p>
                  </div>
               </div>
           </div>
 
+          {/* PREVIEW & IMPORT AREA */}
           <AnimatePresence>
             {parsedData.length > 0 && (
                 <motion.div initial={{opacity:0, height:0}} animate={{opacity:1, height:'auto'}} exit={{opacity:0, height:0}} className="bg-slate-800 p-4 rounded-xl border border-green-500/30">
@@ -946,16 +994,18 @@ export default function ClimbPerformanceLab() {
     );
   };
 
+  // --- APP SHELL ---
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-200 font-sans selection:bg-blue-500/30">
        <AnimatePresence>
           {notification && <motion.div initial={{y:-50, opacity:0}} animate={{y:0, opacity:1}} exit={{opacity:0}} className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-green-500 text-white px-6 py-2 rounded-full font-bold shadow-2xl flex items-center gap-2"><Check size={16}/> {notification.msg}</motion.div>}
        </AnimatePresence>
        <header className="sticky top-0 z-40 bg-slate-900/80 backdrop-blur border-b border-slate-800">
-          <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
+          <div className="w-full px-4 md:px-8 py-3 flex justify-between items-center">
              <div className="flex items-center gap-3">
                 <div className="bg-gradient-to-br from-blue-600 to-indigo-600 p-2 rounded shadow-lg shadow-blue-500/20"><Mountain className="text-white" size={20}/></div>
-                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v16</span></h1>
+                <h1 className="text-lg font-bold text-white tracking-tight">Climb Performance Lab <span className="text-xs text-blue-500 ml-1">ELITE v18</span></h1>
              </div>
              <div className="flex items-center gap-4">
                 <button onClick={handleCloudSync} disabled={syncStatus === 'syncing'} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-lg text-xs font-bold flex items-center gap-2 transition disabled:opacity-50">
@@ -965,7 +1015,7 @@ export default function ClimbPerformanceLab() {
              </div>
           </div>
        </header>
-       <main className="max-w-7xl mx-auto p-4 md:p-6 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
+       <main className="w-full p-4 md:p-6 md:px-8 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
           <nav className="flex md:flex-col gap-2 overflow-x-auto md:overflow-visible pb-2 sticky md:top-24 h-fit">
              {[{id: 'dashboard', icon: Activity, l: 'Dashboard'}, {id: 'strategy', icon: Map, l: 'Climb Manager'}, {id: 'coach', icon: Brain, l: 'AI Coach'}, {id: 'fuel', icon: Droplet, l: 'Fueling'}, {id: 'data', icon: Database, l: 'Data Hub'}].map(item => (
                 <button key={item.id} onClick={() => setActiveTab(item.id)} className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition whitespace-nowrap border ${activeTab === item.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/40' : 'border-transparent text-slate-400 hover:bg-slate-900 hover:text-white'}`}>
